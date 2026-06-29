@@ -1,0 +1,307 @@
+// Tasku data model — covers Tier 1 (core) + Tier 2 (agile, workflows, labels,
+// components, attachments, notifications). See docs/ARCHITECTURE.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Users & membership
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships   ProjectMember[]
+  reportedIssues Issue[]        @relation("Reporter")
+  assignedIssues Issue[]        @relation("Assignee")
+  comments      Comment[]
+  activities    ActivityLog[]
+  notifications Notification[]   @relation("Recipient")
+  ledProjects   Project[]        @relation("ProjectLead")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+// ---------------------------------------------------------------------------
+// Projects, workflows, statuses
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "TASK" -> issues TASK-1, TASK-2
+  name        String
+  description String?
+  leadId      String?
+  issueSeq    Int      @default(0) // per-project monotonic counter
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lead       User?           @relation("ProjectLead", fields: [leadId], references: [id])
+  members    ProjectMember[]
+  issues     Issue[]
+  statuses   Status[]
+  sprints    Sprint[]
+  labels     Label[]
+  components Component[]
+}
+
+enum StatusCategory {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Status {
+  id        String         @id @default(cuid())
+  projectId String
+  name      String
+  category  StatusCategory @default(TODO)
+  order     Int            // column order on the board
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  Issue[]
+
+  @@unique([projectId, name])
+}
+
+// ---------------------------------------------------------------------------
+// Issues
+// ---------------------------------------------------------------------------
+
+enum IssueType {
+  EPIC
+  STORY
+  TASK
+  BUG
+  SUBTASK
+}
+
+enum Priority {
+  LOWEST
+  LOW
+  MEDIUM
+  HIGH
+  HIGHEST
+}
+
+model Issue {
+  id          String    @id @default(cuid())
+  projectId   String
+  key         String    @unique // "TASK-42"
+  seq         Int       // 42
+  type        IssueType @default(TASK)
+  title       String
+  description String?   // rich text (HTML/JSON from TipTap)
+  statusId    String
+  priority    Priority  @default(MEDIUM)
+  reporterId  String
+  assigneeId  String?
+  parentId    String?   // epic link / subtask parent
+  sprintId    String?
+  storyPoints Int?
+  rank        String    // lexorank for board ordering
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status      Status        @relation(fields: [statusId], references: [id])
+  reporter    User          @relation("Reporter", fields: [reporterId], references: [id])
+  assignee    User?         @relation("Assignee", fields: [assigneeId], references: [id])
+  parent      Issue?        @relation("IssueHierarchy", fields: [parentId], references: [id])
+  children    Issue[]       @relation("IssueHierarchy")
+  sprint      Sprint?       @relation(fields: [sprintId], references: [id])
+  comments    Comment[]
+  labels      IssueLabel[]
+  components   IssueComponent[]
+  attachments Attachment[]
+  activities  ActivityLog[]
+  outLinks    IssueLink[]   @relation("LinkSource")
+  inLinks     IssueLink[]   @relation("LinkTarget")
+
+  @@index([projectId])
+  @@index([statusId])
+  @@index([sprintId])
+}
+
+enum LinkType {
+  BLOCKS
+  IS_BLOCKED_BY
+  RELATES_TO
+  DUPLICATES
+}
+
+model IssueLink {
+  id       String   @id @default(cuid())
+  sourceId String
+  targetId String
+  type     LinkType @default(RELATES_TO)
+
+  source Issue @relation("LinkSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target Issue @relation("LinkTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Sprints
+// ---------------------------------------------------------------------------
+
+enum SprintState {
+  FUTURE
+  ACTIVE
+  CLOSED
+}
+
+model Sprint {
+  id        String      @id @default(cuid())
+  projectId String
+  name      String
+  goal      String?
+  state     SprintState @default(FUTURE)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  Issue[]
+}
+
+// ---------------------------------------------------------------------------
+// Labels & components
+// ---------------------------------------------------------------------------
+
+model Label {
+  id        String @id @default(cuid())
+  projectId String
+  name      String
+  color     String @default("#6b7280")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  IssueLabel[]
+
+  @@unique([projectId, name])
+}
+
+model IssueLabel {
+  issueId String
+  labelId String
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, labelId])
+}
+
+model Component {
+  id        String @id @default(cuid())
+  projectId String
+  name      String
+
+  project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  IssueComponent[]
+
+  @@unique([projectId, name])
+}
+
+model IssueComponent {
+  issueId     String
+  componentId String
+
+  issue     Issue     @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, componentId])
+}
+
+// ---------------------------------------------------------------------------
+// Comments, attachments, activity, notifications
+// ---------------------------------------------------------------------------
+
+model Comment {
+  id        String   @id @default(cuid())
+  issueId   String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  issueId    String
+  filename   String
+  url        String
+  mimeType   String
+  size       Int
+  uploadedAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  issueId   String
+  actorId   String
+  field     String   // e.g. "status", "assignee", "created", "comment"
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  actor User  @relation(fields: [actorId], references: [id])
+
+  @@index([issueId])
+}
+
+enum NotificationType {
+  ASSIGNED
+  MENTIONED
+  COMMENTED
+  STATUS_CHANGED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  type        NotificationType
+  issueKey    String
+  message     String
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, read])
+}

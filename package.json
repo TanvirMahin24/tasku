@@ -1,0 +1,25 @@
+{
+  "name": "tasku",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Free, open-source, self-hostable project & issue tracker — an alternative to Jira.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @tasku/api & npm run dev --workspace @tasku/web",
+    "build": "npm run build --workspace @tasku/types && npm run build --workspace @tasku/api && npm run build --workspace @tasku/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace @tasku/api",
+    "db:seed": "npm run db:seed --workspace @tasku/api",
+    "db:generate": "npm run db:generate --workspace @tasku/api"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "typescript": "^5.4.5"
+  }
+}
