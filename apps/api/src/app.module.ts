@@ -1,0 +1,33 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
+import { CommonModule } from './common/common.module';
+import { EventsModule } from './events/events.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { ProjectsModule } from './projects/projects.module';
+import { IssuesModule } from './issues/issues.module';
+import { BoardModule } from './board/board.module';
+import { SprintsModule } from './sprints/sprints.module';
+import { CommentsModule } from './comments/comments.module';
+import { LabelsModule } from './labels/labels.module';
+import { NotificationsModule } from './notifications/notifications.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    CommonModule,
+    EventsModule,
+    AuthModule,
+    UsersModule,
+    ProjectsModule,
+    IssuesModule,
+    BoardModule,
+    SprintsModule,
+    CommentsModule,
+    LabelsModule,
+    NotificationsModule,
+  ],
+})
+export class AppModule {}
