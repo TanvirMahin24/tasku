@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",

@@ -11,9 +11,13 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   Columns3,
+  GanttChartSquare,
+  LayoutDashboard,
   ListTodo,
   LogOut,
   Plus,
+  Rows3,
+  Users,
   BarChart3,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -58,14 +62,36 @@ export function AppLayout() {
           />
         </div>
 
-        <nav className="mt-4 flex-1 space-y-0.5 px-3">
-          {activeProject ? (
+        <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
+          <SidebarLink to="/" icon={ListTodo} end>
+            Projects
+          </SidebarLink>
+          <SidebarLink to="/teams" icon={Users}>
+            Teams
+          </SidebarLink>
+
+          {activeProject && (
             <>
               <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                 {activeProject.name}
               </p>
+              <SidebarLink
+                to={`/projects/${activeProject.key}/overview`}
+                icon={LayoutDashboard}
+              >
+                Overview
+              </SidebarLink>
               <SidebarLink to={`/projects/${activeProject.key}/board`} icon={Columns3}>
                 Board
+              </SidebarLink>
+              <SidebarLink to={`/projects/${activeProject.key}/list`} icon={Rows3}>
+                List
+              </SidebarLink>
+              <SidebarLink
+                to={`/projects/${activeProject.key}/timeline`}
+                icon={GanttChartSquare}
+              >
+                Timeline
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/backlog`}
@@ -80,10 +106,6 @@ export function AppLayout() {
                 Sprint report
               </SidebarLink>
             </>
-          ) : (
-            <SidebarLink to="/" icon={ListTodo} end>
-              Projects
-            </SidebarLink>
           )}
         </nav>
 

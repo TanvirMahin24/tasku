@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ISSUE_TYPES, PRIORITIES, type CreateIssueDto } from '@tasku/types';
-import { apiErrorMessage, issuesApi } from '@/lib/api';
+import { apiErrorMessage, issuesApi, teamsApi } from '@/lib/api';
+import { qk } from '@/lib/queryKeys';
 import { ISSUE_TYPE_META, PRIORITY_META } from '@/lib/format';
 import { useProjectMeta } from '@/hooks/useProjectMeta';
 import { Modal } from '@/components/ui/Modal';
@@ -27,6 +28,11 @@ export function CreateIssueModal({
 }) {
   const queryClient = useQueryClient();
   const { sprints, labels, users } = useProjectMeta(projectKey);
+  const { data: teams = [] } = useQuery({
+    queryKey: qk.teams,
+    queryFn: teamsApi.list,
+    enabled: open,
+  });
 
   const [type, setType] = useState<CreateIssueDto['type']>('TASK');
   const [title, setTitle] = useState('');
@@ -36,6 +42,8 @@ export function CreateIssueModal({
   const [sprintId, setSprintId] = useState<string>(defaultSprintId ?? 'backlog');
   const [storyPoints, setStoryPoints] = useState<string>('');
   const [labelIds, setLabelIds] = useState<string[]>([]);
+  const [teamId, setTeamId] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
@@ -47,6 +55,8 @@ export function CreateIssueModal({
     setSprintId(defaultSprintId ?? 'backlog');
     setStoryPoints('');
     setLabelIds([]);
+    setTeamId('');
+    setDueDate('');
     setError(null);
   }
 
@@ -79,6 +89,8 @@ export function CreateIssueModal({
       sprintId: sprintId === 'backlog' ? undefined : sprintId,
       storyPoints: Number.isFinite(points) ? points : undefined,
       labelIds: labelIds.length ? labelIds : undefined,
+      teamId: teamId || undefined,
+      dueDate: dueDate || undefined,
     });
   }
 
@@ -195,6 +207,25 @@ export function CreateIssueModal({
               labels={labels}
               selectedIds={labelIds}
               onChange={setLabelIds}
+            />
+          </FormRow>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormRow label="Team">
+            <Select
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              placeholder="No team"
+              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+            />
+          </FormRow>
+          <FormRow label="Due date">
+            <input
+              type="date"
+              className={inputClass}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
             />
           </FormRow>
         </div>

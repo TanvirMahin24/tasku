@@ -15,6 +15,8 @@ import {
   IssueType,
   Priority,
   SprintState,
+  TeamRole,
+  BoardType,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { LexoRank } from 'lexorank';
@@ -379,6 +381,116 @@ async function main() {
         type: 'MENTIONED',
         issueKey: commentTarget.key,
         message: `You were mentioned on ${commentTarget.key}`,
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Teams (idempotent: name is unique)
+  // ---------------------------------------------------------------------------
+  const platformTeam = await prisma.team.upsert({
+    where: { name: 'Platform' },
+    update: {},
+    create: {
+      name: 'Platform',
+      description: 'Backend & infrastructure.',
+      color: '#6366f1',
+      members: {
+        create: [
+          { userId: alice.id, role: TeamRole.LEAD },
+          { userId: bob.id, role: TeamRole.MEMBER },
+        ],
+      },
+    },
+  });
+  const designTeam = await prisma.team.upsert({
+    where: { name: 'Design' },
+    update: {},
+    create: {
+      name: 'Design',
+      description: 'Product design & UX.',
+      color: '#ec4899',
+      members: {
+        create: [
+          { userId: carol.id, role: TeamRole.LEAD },
+          { userId: alice.id, role: TeamRole.MEMBER },
+        ],
+      },
+    },
+  });
+
+  // ---------------------------------------------------------------------------
+  // Team assignment + timeline dates on a few issues
+  // ---------------------------------------------------------------------------
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const offset = (days: number) => new Date(now + days * day);
+
+  // EPIC (TASK-1): Platform team, spanning ~6 weeks.
+  await prisma.issue.update({
+    where: { key: 'TASK-1' },
+    data: {
+      teamId: platformTeam.id,
+      startDate: offset(-7),
+      dueDate: offset(35),
+    },
+  });
+
+  // Platform team + dates.
+  await prisma.issue.updateMany({
+    where: { key: { in: ['TASK-2', 'TASK-4', 'TASK-5'] } },
+    data: { teamId: platformTeam.id },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-2' },
+    data: { startDate: offset(0), dueDate: offset(10) },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-4' },
+    data: { startDate: offset(3), dueDate: offset(14) },
+  });
+
+  // Design team + dates.
+  await prisma.issue.updateMany({
+    where: { key: { in: ['TASK-3', 'TASK-7'] } },
+    data: { teamId: designTeam.id },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-3' },
+    data: { startDate: offset(7), dueDate: offset(21) },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-7' },
+    data: { startDate: offset(14), dueDate: offset(28) },
+  });
+
+  // ---------------------------------------------------------------------------
+  // Boards: ensure a default "Main Board" + a team-scoped "Platform Board"
+  // ---------------------------------------------------------------------------
+  const existingDefaultBoard = await prisma.board.findFirst({
+    where: { projectId: project.id, isDefault: true },
+  });
+  if (!existingDefaultBoard) {
+    await prisma.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Main Board',
+        type: BoardType.KANBAN,
+        isDefault: true,
+      },
+    });
+  }
+  const existingPlatformBoard = await prisma.board.findFirst({
+    where: { projectId: project.id, name: 'Platform Board' },
+  });
+  if (!existingPlatformBoard) {
+    await prisma.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Platform Board',
+        type: BoardType.KANBAN,
+        teamId: platformTeam.id,
+        isDefault: false,
       },
     });
   }

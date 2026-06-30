@@ -7,6 +7,8 @@ export type IssueType = 'EPIC' | 'STORY' | 'TASK' | 'BUG' | 'SUBTASK';
 export type Priority = 'LOWEST' | 'LOW' | 'MEDIUM' | 'HIGH' | 'HIGHEST';
 export type SprintState = 'FUTURE' | 'ACTIVE' | 'CLOSED';
 export type LinkType = 'BLOCKS' | 'IS_BLOCKED_BY' | 'RELATES_TO' | 'DUPLICATES';
+export type TeamRole = 'LEAD' | 'MEMBER';
+export type BoardType = 'KANBAN' | 'SCRUM';
 export type NotificationType =
   | 'ASSIGNED'
   | 'MENTIONED'
@@ -72,6 +74,12 @@ export interface ComponentDto {
   name: string;
 }
 
+export interface TeamSummaryDto {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface IssueSummaryDto {
   id: string;
   key: string;
@@ -85,6 +93,9 @@ export interface IssueSummaryDto {
   sprintId: string | null;
   parentId: string | null;
   labels: LabelDto[];
+  team: TeamSummaryDto | null;
+  startDate: string | null;
+  dueDate: string | null;
 }
 
 export interface CommentDto {
@@ -111,6 +122,7 @@ export interface IssueDetailDto extends IssueSummaryDto {
   comments: CommentDto[];
   activities: ActivityDto[];
   children: IssueSummaryDto[];
+  parent: IssueSummaryDto | null;
   projectKey: string;
   createdAt: string;
   updatedAt: string;
@@ -139,10 +151,88 @@ export interface BoardColumnDto {
   issues: IssueSummaryDto[];
 }
 
+export interface BoardSummaryDto {
+  id: string;
+  name: string;
+  type: BoardType;
+  teamId: string | null;
+  isDefault: boolean;
+}
+
+export interface BoardFilter {
+  assigneeIds?: string[];
+  labelIds?: string[];
+  types?: IssueType[];
+  priorities?: Priority[];
+}
+
 export interface BoardDto {
   project: ProjectDto;
   columns: BoardColumnDto[];
   activeSprint: SprintDto | null;
+  board?: BoardSummaryDto | null;
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+export interface TeamMemberDto {
+  user: UserDto;
+  role: TeamRole;
+}
+
+export interface TeamDto {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  members: TeamMemberDto[];
+  issueCount?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Timeline (roadmap)
+// ---------------------------------------------------------------------------
+
+export interface TimelineRowDto {
+  issue: IssueSummaryDto; // an epic, or a standalone issue
+  children: IssueSummaryDto[];
+}
+
+export interface TimelineDto {
+  rows: TimelineRowDto[];
+  unscheduled: IssueSummaryDto[]; // issues with no start/due date
+  rangeStart: string | null;
+  rangeEnd: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Overview (project dashboard)
+// ---------------------------------------------------------------------------
+
+export interface CountBucket {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface WorkloadEntryDto {
+  user: UserDto;
+  count: number;
+  points: number;
+}
+
+export interface OverviewDto {
+  project: ProjectDto;
+  totalIssues: number;
+  byStatusCategory: CountBucket[]; // TODO / IN_PROGRESS / DONE
+  byType: CountBucket[];
+  byPriority: CountBucket[];
+  points: { total: number; done: number };
+  activeSprint: SprintDto | null;
+  recentActivity: ActivityDto[];
+  workload: WorkloadEntryDto[];
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +267,9 @@ export interface CreateIssueDto {
   storyPoints?: number;
   statusId?: string;
   labelIds?: string[];
+  teamId?: string;
+  startDate?: string;
+  dueDate?: string;
 }
 
 export interface UpdateIssueDto {
@@ -190,6 +283,58 @@ export interface UpdateIssueDto {
   sprintId?: string | null;
   storyPoints?: number | null;
   labelIds?: string[];
+  teamId?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+}
+
+export interface CreateSubtaskDto {
+  title: string;
+  assigneeId?: string;
+}
+
+export interface CreateTeamDto {
+  name: string;
+  description?: string;
+  color?: string;
+}
+
+export interface UpdateTeamDto {
+  name?: string;
+  description?: string;
+  color?: string;
+}
+
+export interface AddTeamMemberDto {
+  userId: string;
+  role?: TeamRole;
+}
+
+export interface CreateBoardDto {
+  name: string;
+  type?: BoardType;
+  teamId?: string | null;
+  filter?: BoardFilter;
+}
+
+export interface UpdateBoardDto {
+  name?: string;
+  type?: BoardType;
+  teamId?: string | null;
+  filter?: BoardFilter;
+}
+
+// Query params for the list view
+export interface IssueListQuery {
+  sprintId?: string;
+  statusId?: string;
+  assigneeId?: string;
+  teamId?: string;
+  type?: IssueType;
+  parentId?: string;
+  search?: string;
+  orderBy?: 'rank' | 'priority' | 'createdAt' | 'updatedAt' | 'dueDate' | 'key';
+  order?: 'asc' | 'desc';
 }
 
 export interface MoveIssueDto {

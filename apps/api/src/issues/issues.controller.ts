@@ -15,6 +15,7 @@ import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { ListIssuesQuery } from './dto/list-issues.query';
+import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 
@@ -58,6 +59,15 @@ export class IssuesController {
     @CurrentUser() user: AuthUser,
   ): Promise<IssueDetailDto> {
     return this.issues.update(issueKey, dto, user.id);
+  }
+
+  @Post('issues/:issueKey/subtasks')
+  createSubtask(
+    @Param('issueKey') issueKey: string,
+    @Body() dto: CreateSubtaskDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<IssueDetailDto> {
+    return this.issues.createSubtask(issueKey, dto, user.id);
   }
 
   @Post('issues/:issueKey/move')

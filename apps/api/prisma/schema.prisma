@@ -30,6 +30,7 @@ model User {
   activities    ActivityLog[]
   notifications Notification[]   @relation("Recipient")
   ledProjects   Project[]        @relation("ProjectLead")
+  teamMemberships TeamMember[]
 }
 
 enum Role {
@@ -72,6 +73,7 @@ model Project {
   sprints    Sprint[]
   labels     Label[]
   components Component[]
+  boards     Board[]
 }
 
 enum StatusCategory {
@@ -127,7 +129,10 @@ model Issue {
   assigneeId  String?
   parentId    String?   // epic link / subtask parent
   sprintId    String?
+  teamId      String?
   storyPoints Int?
+  startDate   DateTime? // timeline / roadmap
+  dueDate     DateTime? // timeline / roadmap
   rank        String    // lexorank for board ordering
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -136,6 +141,7 @@ model Issue {
   status      Status        @relation(fields: [statusId], references: [id])
   reporter    User          @relation("Reporter", fields: [reporterId], references: [id])
   assignee    User?         @relation("Assignee", fields: [assigneeId], references: [id])
+  team        Team?         @relation(fields: [teamId], references: [id])
   parent      Issue?        @relation("IssueHierarchy", fields: [parentId], references: [id])
   children    Issue[]       @relation("IssueHierarchy")
   sprint      Sprint?       @relation(fields: [sprintId], references: [id])
@@ -150,6 +156,8 @@ model Issue {
   @@index([projectId])
   @@index([statusId])
   @@index([sprintId])
+  @@index([teamId])
+  @@index([parentId])
 }
 
 enum LinkType {
@@ -304,4 +312,64 @@ model Notification {
   recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, read])
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+enum TeamRole {
+  LEAD
+  MEMBER
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  members TeamMember[]
+  issues  Issue[]
+  boards  Board[]
+}
+
+model TeamMember {
+  id     String   @id @default(cuid())
+  teamId String
+  userId String
+  role   TeamRole @default(MEMBER)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+// ---------------------------------------------------------------------------
+// Boards — a project can have several boards (a default board plus
+// team-scoped / filtered boards). Columns are the project's statuses;
+// `filter` narrows which issues appear (assignees, labels, types, priorities).
+// ---------------------------------------------------------------------------
+
+enum BoardType {
+  KANBAN
+  SCRUM
+}
+
+model Board {
+  id        String    @id @default(cuid())
+  projectId String
+  name      String
+  type      BoardType @default(KANBAN)
+  teamId    String?
+  filter    Json?     // { assigneeIds?, labelIds?, types?, priorities? }
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team    Team?   @relation(fields: [teamId], references: [id])
+
+  @@index([projectId])
 }

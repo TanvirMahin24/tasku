@@ -1,24 +1,35 @@
 import axios, { type AxiosInstance } from 'axios';
 import type {
+  AddTeamMemberDto,
   AuthResponse,
   BoardDto,
+  BoardSummaryDto,
   CommentDto,
+  CreateBoardDto,
   CreateCommentDto,
   CreateIssueDto,
   CreateProjectDto,
   CreateSprintDto,
+  CreateSubtaskDto,
+  CreateTeamDto,
   IssueDetailDto,
+  IssueListQuery,
   IssueSummaryDto,
   LabelDto,
   LoginDto,
   MoveIssueDto,
   NotificationDto,
+  OverviewDto,
   ProjectDto,
   RegisterDto,
   Role,
   SprintDto,
   StatusDto,
+  TeamDto,
+  TimelineDto,
+  UpdateBoardDto,
   UpdateIssueDto,
+  UpdateTeamDto,
   UserDto,
 } from '@tasku/types';
 
@@ -135,19 +146,57 @@ export const projectsApi = {
         params: sprintId ? { sprintId } : undefined,
       })
       .then((r) => r.data),
+  timeline: (key: string) =>
+    api.get<TimelineDto>(`/projects/${key}/timeline`).then((r) => r.data),
+  overview: (key: string) =>
+    api.get<OverviewDto>(`/projects/${key}/overview`).then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+export const teamsApi = {
+  list: () => api.get<TeamDto[]>('/teams').then((r) => r.data),
+  get: (id: string) => api.get<TeamDto>(`/teams/${id}`).then((r) => r.data),
+  create: (dto: CreateTeamDto) =>
+    api.post<TeamDto>('/teams', dto).then((r) => r.data),
+  update: (id: string, dto: UpdateTeamDto) =>
+    api.patch<TeamDto>(`/teams/${id}`, dto).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/teams/${id}`).then((r) => r.data),
+  addMember: (id: string, dto: AddTeamMemberDto) =>
+    api.post<TeamDto>(`/teams/${id}/members`, dto).then((r) => r.data),
+  removeMember: (id: string, userId: string) =>
+    api
+      .delete<TeamDto>(`/teams/${id}/members/${userId}`)
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Boards
+// ---------------------------------------------------------------------------
+
+export const boardsApi = {
+  list: (key: string) =>
+    api.get<BoardSummaryDto[]>(`/projects/${key}/boards`).then((r) => r.data),
+  create: (key: string, dto: CreateBoardDto) =>
+    api
+      .post<BoardSummaryDto>(`/projects/${key}/boards`, dto)
+      .then((r) => r.data),
+  get: (boardId: string) =>
+    api.get<BoardDto>(`/boards/${boardId}/board`).then((r) => r.data),
+  update: (boardId: string, dto: UpdateBoardDto) =>
+    api.patch<BoardSummaryDto>(`/boards/${boardId}`, dto).then((r) => r.data),
+  remove: (boardId: string) =>
+    api.delete<void>(`/boards/${boardId}`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------
 // Issues
 // ---------------------------------------------------------------------------
 
-export interface IssueFilters {
-  sprintId?: string;
-  statusId?: string;
-  assigneeId?: string;
-  type?: string;
-  search?: string;
-}
+export type IssueFilters = IssueListQuery;
 
 export const issuesApi = {
   list: (key: string, filters?: IssueFilters) =>
@@ -168,6 +217,10 @@ export const issuesApi = {
       .then((r) => r.data),
   remove: (issueKey: string) =>
     api.delete<void>(`/issues/${issueKey}`).then((r) => r.data),
+  createSubtask: (issueKey: string, dto: CreateSubtaskDto) =>
+    api
+      .post<IssueDetailDto>(`/issues/${issueKey}/subtasks`, dto)
+      .then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

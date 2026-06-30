@@ -27,6 +27,14 @@ fully-typed React + NestJS app you can run yourself.
 - **Live updates** over WebSocket (board, comments, sprints)
 - Sprint report with a lightweight burndown/points view
 
+**Tier 2.5 — Jira-style views & org**
+- **Teams** — global teams with members & roles, assignable to issues and boards
+- **Multiple boards per project** — a default board plus team-scoped / filtered boards (filter by assignee, label, type, priority), with a board switcher
+- **List view** — a dense, sortable, filterable table of all issues
+- **Timeline / roadmap** — a Gantt view of epics and scheduled work over time (start/due dates), with an "unscheduled" tray
+- **Overview dashboard** — totals, story-point progress, status/type/priority breakdowns, per-assignee workload, and a recent-activity feed
+- **Sub-task / parent / child** — create subtasks from an issue; parent & child links in the issue drawer
+
 ## Tech stack
 
 | Layer    | Tech |
@@ -111,6 +119,9 @@ GET/POST /projects                        GET/PATCH/DELETE /projects/:key
 GET /projects/:key/board | /statuses | /labels | /sprints | /members
 GET/POST /projects/:key/issues            GET/PATCH/DELETE /issues/:issueKey
 POST /issues/:issueKey/move               GET/POST /issues/:issueKey/comments
+POST /issues/:issueKey/subtasks           GET /projects/:key/timeline | /overview
+GET/POST /projects/:key/boards            GET/PATCH/DELETE /boards/:id   GET /boards/:id/board
+GET/POST /teams                           GET/PATCH/DELETE /teams/:id    POST/DELETE /teams/:id/members
 POST /projects/:key/sprints               POST /sprints/:id/start | /complete
 GET /notifications                        POST /notifications/:id/read | /read-all
 ```

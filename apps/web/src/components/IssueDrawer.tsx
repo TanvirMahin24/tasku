@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   useMutation,
   useQuery,
@@ -7,6 +8,7 @@ import {
 } from '@tanstack/react-query';
 import {
   ExternalLink,
+  Plus,
   Send,
   Trash2,
   X,
@@ -17,15 +19,18 @@ import {
   type ActivityDto,
   type CommentDto,
   type IssueDetailDto,
+  type IssueSummaryDto,
+  type StatusDto,
   type UpdateIssueDto,
 } from '@tasku/types';
-import { apiErrorMessage, commentsApi, issuesApi } from '@/lib/api';
+import { apiErrorMessage, commentsApi, issuesApi, teamsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
   PRIORITY_META,
   humanizeField,
   relativeTime,
+  toDateInput,
 } from '@/lib/format';
 import { useProjectMeta } from '@/hooks/useProjectMeta';
 import { Avatar } from '@/components/ui/Avatar';
@@ -89,6 +94,11 @@ function DrawerBody({
 }) {
   const queryClient = useQueryClient();
   const { statuses, labels, users } = useProjectMeta(projectKey);
+
+  const { data: teams = [] } = useQuery({
+    queryKey: qk.teams,
+    queryFn: teamsApi.list,
+  });
 
   const { data: issue, isLoading, error } = useQuery({
     queryKey: qk.issue(issueKey),
@@ -189,6 +199,24 @@ function DrawerBody({
             className="w-full rounded-md border border-transparent px-2 py-1 text-xl font-semibold text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
           />
 
+          {issue.parent && (
+            <div className="mt-3">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Parent
+              </span>
+              <Link
+                to={`/issues/${issue.parent.key}`}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm hover:border-brand-300 hover:bg-white"
+              >
+                <IssueTypeIcon type={issue.parent.type} />
+                <span className="font-mono text-xs text-gray-500">
+                  {issue.parent.key}
+                </span>
+                <span className="text-gray-700">{issue.parent.title}</span>
+              </Link>
+            </div>
+          )}
+
           <Section label="Description">
             <textarea
               value={description}
@@ -200,6 +228,14 @@ function DrawerBody({
               }}
               placeholder="Add a description…"
               className={`${inputClass} min-h-[120px] resize-y`}
+            />
+          </Section>
+
+          <Section label="Subtasks">
+            <SubtasksPanel
+              issueKey={issue.key}
+              items={issue.children}
+              statuses={statuses}
             />
           </Section>
 
@@ -290,6 +326,40 @@ function DrawerBody({
               onChange={(ids) => patch({ labelIds: ids })}
             />
           </Field>
+
+          <Field label="Team">
+            <Select
+              value={issue.team?.id ?? ''}
+              onChange={(e) =>
+                patch({ teamId: e.target.value ? e.target.value : null })
+              }
+              placeholder="No team"
+              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Start date">
+              <input
+                type="date"
+                defaultValue={toDateInput(issue.startDate)}
+                key={`start-${issue.startDate ?? 'none'}`}
+                onChange={(e) =>
+                  patch({ startDate: e.target.value || null })
+                }
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Due date">
+              <input
+                type="date"
+                defaultValue={toDateInput(issue.dueDate)}
+                key={`due-${issue.dueDate ?? 'none'}`}
+                onChange={(e) => patch({ dueDate: e.target.value || null })}
+                className={inputClass}
+              />
+            </Field>
+          </div>
 
           <div className="space-y-1.5 border-t border-gray-200 pt-3 text-xs text-gray-500">
             <div className="flex items-center justify-between">
@@ -391,6 +461,125 @@ function CommentsPanel({
           <Send className="h-3.5 w-3.5" />
         </Button>
       </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Subtasks
+// ---------------------------------------------------------------------------
+
+function SubtasksPanel({
+  issueKey,
+  items,
+  statuses,
+}: {
+  issueKey: string;
+  items: IssueSummaryDto[];
+  statuses: StatusDto[];
+}) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const doneStatusIds = new Set(
+    statuses.filter((s) => s.category === 'DONE').map((s) => s.id),
+  );
+
+  const add = useMutation({
+    mutationFn: (text: string) =>
+      issuesApi.createSubtask(issueKey, { title: text }),
+    onSuccess: () => {
+      setTitle('');
+      setAdding(false);
+      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
+    },
+    onError: (err) => setError(apiErrorMessage(err, 'Could not add subtask')),
+  });
+
+  return (
+    <div className="space-y-2">
+      {items.length > 0 && (
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+          {items.map((c) => {
+            const done = doneStatusIds.has(c.statusId);
+            return (
+              <li key={c.id}>
+                <Link
+                  to={`/issues/${c.key}`}
+                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={done}
+                    readOnly
+                    className="h-4 w-4 rounded border-gray-300 text-brand-600"
+                  />
+                  <IssueTypeIcon type={c.type} />
+                  <span className="font-mono text-[11px] text-gray-400">
+                    {c.key}
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 truncate ${done ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                  >
+                    {c.title}
+                  </span>
+                  <Avatar user={c.assignee} size="xs" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {adding ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            if (title.trim()) add.mutate(title.trim());
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Subtask title…"
+            autoFocus
+            className={inputClass}
+          />
+          <Button type="submit" size="sm" loading={add.isPending} className="h-9">
+            Add
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={() => {
+              setAdding(false);
+              setTitle('');
+              setError(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add subtask
+        </button>
+      )}
+
+      {items.length === 0 && !adding && (
+        <p className="text-sm text-gray-400">No subtasks yet.</p>
+      )}
+
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }

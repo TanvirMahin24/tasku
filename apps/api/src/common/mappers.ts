@@ -13,6 +13,10 @@ import type {
   ActivityDto,
   SprintDto,
   NotificationDto,
+  TeamSummaryDto,
+  TeamDto,
+  TeamMemberDto,
+  BoardSummaryDto,
   Role,
 } from '@tasku/types';
 
@@ -80,6 +84,46 @@ function resolveComponents(issue: any): ComponentDto[] {
   return rows.map((row: any) => toComponentDto(row.component ?? row));
 }
 
+export function toTeamSummaryDto(t: any): TeamSummaryDto {
+  return {
+    id: t.id,
+    name: t.name,
+    color: t.color,
+  };
+}
+
+export function toTeamSummaryDtoOrNull(t: any): TeamSummaryDto | null {
+  return t ? toTeamSummaryDto(t) : null;
+}
+
+export function toTeamMemberDto(m: any): TeamMemberDto {
+  return {
+    user: toUserDto(m.user),
+    role: m.role,
+  };
+}
+
+export function toTeamDto(t: any, issueCount?: number): TeamDto {
+  return {
+    id: t.id,
+    name: t.name,
+    description: t.description ?? null,
+    color: t.color,
+    members: (t.members ?? []).map(toTeamMemberDto),
+    ...(issueCount !== undefined ? { issueCount } : {}),
+  };
+}
+
+export function toBoardSummaryDto(b: any): BoardSummaryDto {
+  return {
+    id: b.id,
+    name: b.name,
+    type: b.type,
+    teamId: b.teamId ?? null,
+    isDefault: b.isDefault,
+  };
+}
+
 export function toIssueSummaryDto(i: any): IssueSummaryDto {
   return {
     id: i.id,
@@ -94,6 +138,9 @@ export function toIssueSummaryDto(i: any): IssueSummaryDto {
     sprintId: i.sprintId ?? null,
     parentId: i.parentId ?? null,
     labels: resolveLabels(i),
+    team: toTeamSummaryDtoOrNull(i.team),
+    startDate: i.startDate ? iso(i.startDate) : null,
+    dueDate: i.dueDate ? iso(i.dueDate) : null,
   };
 }
 
@@ -127,6 +174,7 @@ export function toIssueDetailDto(i: any, projectKey: string): IssueDetailDto {
     comments: (i.comments ?? []).map(toCommentDto),
     activities: (i.activities ?? []).map(toActivityDto),
     children: (i.children ?? []).map(toIssueSummaryDto),
+    parent: i.parent ? toIssueSummaryDto(i.parent) : null,
     projectKey,
     createdAt: iso(i.createdAt),
     updatedAt: iso(i.updatedAt),

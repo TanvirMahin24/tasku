@@ -13,6 +13,11 @@ export const qk = {
 
   board: (key: string, sprintId?: string) =>
     ['project', key, 'board', sprintId ?? 'active'] as const,
+  boards: (key: string) => ['project', key, 'boards'] as const,
+  boardById: (boardId: string) => ['board', boardId] as const,
+
+  timeline: (key: string) => ['project', key, 'timeline'] as const,
+  overview: (key: string) => ['project', key, 'overview'] as const,
 
   issues: (key: string, filters?: IssueFilters) =>
     ['project', key, 'issues', filters ?? {}] as const,
@@ -20,6 +25,9 @@ export const qk = {
   comments: (issueKey: string) => ['issue', issueKey, 'comments'] as const,
 
   sprints: (key: string) => ['project', key, 'sprints'] as const,
+
+  teams: ['teams'] as const,
+  team: (id: string) => ['team', id] as const,
 
   notifications: ['notifications'] as const,
 };

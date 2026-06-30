@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   ArrowDown,
   ArrowUp,
@@ -107,6 +107,26 @@ export function avatarColor(seed: string): string {
 export function relativeTime(iso: string): string {
   try {
     return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  } catch {
+    return '';
+  }
+}
+
+/** Short, human date (e.g. "Jun 30, 2026"). Returns '' for null/invalid. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return format(new Date(iso), 'MMM d, yyyy');
+  } catch {
+    return '';
+  }
+}
+
+/** For <input type="date"> values (yyyy-MM-dd). */
+export function toDateInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return format(new Date(iso), 'yyyy-MM-dd');
   } catch {
     return '';
   }

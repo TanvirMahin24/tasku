@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryKey,
 } from '@tanstack/react-query';
 import {
   DndContext,
@@ -21,15 +22,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus } from 'lucide-react';
 import clsx from 'clsx';
 import type {
   BoardDto,
+  BoardSummaryDto,
   IssueSummaryDto,
   MoveIssueDto,
 } from '@tasku/types';
-import { apiErrorMessage, issuesApi, projectsApi } from '@/lib/api';
+import { apiErrorMessage, boardsApi, issuesApi, projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { STATUS_CATEGORY_META } from '@/lib/format';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
@@ -40,24 +42,47 @@ import { Badge } from '@/components/ui/Badge';
 import { IssueCardContent } from '@/components/IssueCard';
 import { IssueDrawer } from '@/components/IssueDrawer';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
+import { CreateBoardModal } from '@/components/CreateBoardModal';
 
 export default function BoardPage() {
-  const { key = '' } = useParams<{ key: string }>();
+  const { key = '', boardId } = useParams<{ key: string; boardId?: string }>();
+  return (
+    <BoardView key={`${key}:${boardId ?? 'default'}`} projectKey={key} boardId={boardId} />
+  );
+}
+
+function BoardView({
+  projectKey: key,
+  boardId,
+}: {
+  projectKey: string;
+  boardId?: string;
+}) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   useProjectSocket(key);
 
   const [activeIssue, setActiveIssue] = useState<IssueSummaryDto | null>(null);
   const [openIssueKey, setOpenIssueKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createBoardOpen, setCreateBoardOpen] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
 
+  const boardQueryKey: QueryKey = boardId
+    ? qk.boardById(boardId)
+    : qk.board(key);
+
   const { data: board, isLoading } = useQuery({
-    queryKey: qk.board(key),
-    queryFn: () => projectsApi.board(key),
+    queryKey: boardQueryKey,
+    queryFn: () => (boardId ? boardsApi.get(boardId) : projectsApi.board(key)),
     enabled: !!key,
   });
 
-  const boardKey = qk.board(key);
+  const { data: boards = [] } = useQuery({
+    queryKey: qk.boards(key),
+    queryFn: () => boardsApi.list(key),
+    enabled: !!key,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -67,13 +92,12 @@ export default function BoardPage() {
     mutationFn: ({ issueKey, dto }: { issueKey: string; dto: MoveIssueDto }) =>
       issuesApi.move(issueKey, dto),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: boardKey });
+      queryClient.invalidateQueries({ queryKey: boardQueryKey });
       queryClient.invalidateQueries({ queryKey: ['project', key, 'issues'] });
     },
     onError: (err) => setMoveError(apiErrorMessage(err, 'Could not move issue')),
   });
 
-  // Flat lookup: issueId -> {columnIndex, issue}
   const issueIndex = useMemo(() => {
     const map = new Map<string, { col: number; issue: IssueSummaryDto }>();
     board?.columns.forEach((c, col) =>
@@ -84,7 +108,6 @@ export default function BoardPage() {
 
   function findColumnOfDroppable(id: string): number | null {
     if (!board) return null;
-    // A droppable id is either a status id (column) or an issue id (card).
     const colByStatus = board.columns.findIndex((c) => c.status.id === id);
     if (colByStatus !== -1) return colByStatus;
     const entry = issueIndex.get(id);
@@ -110,7 +133,6 @@ export default function BoardPage() {
     if (fromCol == null || toCol == null || !activeEntry) return;
 
     const targetStatus = board.columns[toCol].status;
-    // Build the destination ordering as it will appear after the drop.
     const destIssues = board.columns[toCol].issues.filter(
       (i) => i.id !== activeId,
     );
@@ -121,23 +143,20 @@ export default function BoardPage() {
       if (overIdx !== -1) insertAt = overIdx;
     }
 
-    const beforeId = destIssues[insertAt - 1]?.id ?? null; // neighbor above
-    const afterId = destIssues[insertAt]?.id ?? null; // neighbor below
+    const beforeId = destIssues[insertAt - 1]?.id ?? null;
+    const afterId = destIssues[insertAt]?.id ?? null;
 
-    // ---- Optimistic update ----
-    queryClient.setQueryData<BoardDto>(boardKey, (prev) => {
+    queryClient.setQueryData<BoardDto>(boardQueryKey, (prev) => {
       if (!prev) return prev;
       const columns = prev.columns.map((c) => ({
         ...c,
         issues: [...c.issues],
       }));
-      // Remove from source.
       const src = columns[fromCol].issues;
       const idx = src.findIndex((i) => i.id === activeId);
       if (idx === -1) return prev;
       const [moved] = src.splice(idx, 1);
       const updated = { ...moved, statusId: targetStatus.id };
-      // Insert into destination at computed position.
       const dest = columns[toCol].issues;
       const insertIndex = afterId
         ? dest.findIndex((i) => i.id === afterId)
@@ -150,6 +169,11 @@ export default function BoardPage() {
       issueKey: activeEntry.issue.key,
       dto: { statusId: targetStatus.id, beforeId, afterId },
     });
+  }
+
+  function onSelectBoard(b: BoardSummaryDto) {
+    if (b.isDefault) navigate(`/projects/${key}/board`);
+    else navigate(`/projects/${key}/boards/${b.id}`);
   }
 
   if (isLoading) {
@@ -165,12 +189,14 @@ export default function BoardPage() {
     return (
       <>
         <PageHeader title="Board" />
-        <div className="p-6 text-sm text-gray-500">Project not found.</div>
+        <div className="p-6 text-sm text-gray-500">Board not found.</div>
       </>
     );
   }
 
   const totalIssues = board.columns.reduce((n, c) => n + c.issues.length, 0);
+  const currentBoardId = board.board?.id ?? boardId ?? null;
+  const currentBoardName = board.board?.name ?? 'Board';
 
   return (
     <>
@@ -178,7 +204,19 @@ export default function BoardPage() {
         title={board.project.name}
         subtitle={
           <span className="flex items-center gap-2">
-            <span>Board</span>
+            <BoardSwitcher
+              boards={boards}
+              currentBoardId={currentBoardId}
+              currentName={currentBoardName}
+              onSelect={onSelectBoard}
+              onCreate={() => setCreateBoardOpen(true)}
+            />
+            {board.board?.teamId && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+                <span className="h-2 w-2 rounded-full bg-brand-500" />
+                Team board
+              </span>
+            )}
             {board.activeSprint ? (
               <Badge className="bg-green-100 text-green-700">
                 {board.activeSprint.name} · active
@@ -244,6 +282,13 @@ export default function BoardPage() {
         onCreated={(issueKey) => setOpenIssueKey(issueKey)}
       />
 
+      <CreateBoardModal
+        projectKey={key}
+        open={createBoardOpen}
+        onClose={() => setCreateBoardOpen(false)}
+        onCreated={(id) => navigate(`/projects/${key}/boards/${id}`)}
+      />
+
       <IssueDrawer
         projectKey={key}
         issueKey={openIssueKey}
@@ -252,6 +297,95 @@ export default function BoardPage() {
         onDeleted={() => setOpenIssueKey(null)}
       />
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Board switcher
+// ---------------------------------------------------------------------------
+
+function BoardSwitcher({
+  boards,
+  currentBoardId,
+  currentName,
+  onSelect,
+  onCreate,
+}: {
+  boards: BoardSummaryDto[];
+  currentBoardId: string | null;
+  currentName: string;
+  onSelect: (board: BoardSummaryDto) => void;
+  onCreate: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        {currentName}
+        <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-8 z-30 w-56 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl">
+          <div className="max-h-64 overflow-y-auto scrollbar-thin">
+            {boards.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-gray-400">No boards</p>
+            ) : (
+              boards.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => {
+                    onSelect(b);
+                    setOpen(false);
+                  }}
+                  className={clsx(
+                    'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50',
+                    (b.id === currentBoardId || (b.isDefault && !currentBoardId))
+                      ? 'font-semibold text-brand-700'
+                      : 'text-gray-700',
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{b.name}</span>
+                    {b.isDefault && (
+                      <span className="rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500">
+                        default
+                      </span>
+                    )}
+                  </span>
+                  {b.id === currentBoardId && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+          <button
+            onClick={() => {
+              onCreate();
+              setOpen(false);
+            }}
+            className="mt-1 flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4" /> New board
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

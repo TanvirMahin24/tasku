@@ -2,6 +2,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
   MinLength,
@@ -59,4 +60,19 @@ export class UpdateIssueDto implements IUpdateIssueDto {
   @IsArray()
   @IsString({ each: true })
   labelIds?: string[];
+
+  @IsOptional()
+  @ValidateIf((o) => o.teamId !== null)
+  @IsString()
+  teamId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((o) => o.startDate !== null)
+  @IsISO8601()
+  startDate?: string | null;
+
+  @IsOptional()
+  @ValidateIf((o) => o.dueDate !== null)
+  @IsISO8601()
+  dueDate?: string | null;
 }

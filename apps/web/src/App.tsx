@@ -8,6 +8,11 @@ import BoardPage from '@/pages/BoardPage';
 import BacklogPage from '@/pages/BacklogPage';
 import SprintReportPage from '@/pages/SprintReportPage';
 import IssuePage from '@/pages/IssuePage';
+import TeamsPage from '@/pages/TeamsPage';
+import TeamPage from '@/pages/TeamPage';
+import OverviewPage from '@/pages/OverviewPage';
+import ListPage from '@/pages/ListPage';
+import TimelinePage from '@/pages/TimelinePage';
 
 export default function App() {
   return (
@@ -20,7 +25,16 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<ProjectsPage />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/teams/:id" element={<TeamPage />} />
+          <Route path="/projects/:key/overview" element={<OverviewPage />} />
           <Route path="/projects/:key/board" element={<BoardPage />} />
+          <Route
+            path="/projects/:key/boards/:boardId"
+            element={<BoardPage />}
+          />
+          <Route path="/projects/:key/list" element={<ListPage />} />
+          <Route path="/projects/:key/timeline" element={<TimelinePage />} />
           <Route path="/projects/:key/backlog" element={<BacklogPage />} />
           <Route path="/projects/:key/report" element={<SprintReportPage />} />
           <Route path="/issues/:issueKey" element={<IssuePage />} />

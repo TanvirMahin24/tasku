@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import type { IssueSummaryDto } from '@tasku/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { LabelBadge } from '@/components/ui/Badge';
+import { TeamChip } from '@/components/ui/TeamChip';
 import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
 
 /**
@@ -26,8 +27,9 @@ export function IssueCardContent({
         {issue.title}
       </p>
 
-      {issue.labels.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1">
+      {(issue.labels.length > 0 || issue.team) && (
+        <div className="mb-2 flex flex-wrap items-center gap-1">
+          {issue.team && <TeamChip team={issue.team} />}
           {issue.labels.map((l) => (
             <LabelBadge key={l.id} label={l} />
           ))}

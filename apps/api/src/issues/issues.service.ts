@@ -21,22 +21,35 @@ import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { ListIssuesQuery } from './dto/list-issues.query';
+import { CreateSubtaskDto } from './dto/create-subtask.dto';
 
 // Prisma `include` fragments reused across reads.
 const SUMMARY_INCLUDE = {
   assignee: true,
+  team: true,
   labels: { include: { label: true } },
 } satisfies Prisma.IssueInclude;
 
 const DETAIL_INCLUDE = {
   reporter: true,
   assignee: true,
+  team: true,
   labels: { include: { label: true } },
   components: { include: { component: true } },
   comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
   activities: { include: { actor: true }, orderBy: { createdAt: 'desc' } },
   children: { include: SUMMARY_INCLUDE, orderBy: { rank: 'asc' } },
+  parent: { include: SUMMARY_INCLUDE },
 } satisfies Prisma.IssueInclude;
+
+// Priority -> numeric weight for list ordering (HIGHEST first when desc).
+const PRIORITY_WEIGHT: Record<string, number> = {
+  LOWEST: 0,
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  HIGHEST: 4,
+};
 
 @Injectable()
 export class IssuesService {
@@ -91,6 +104,9 @@ export class IssuesService {
           parentId: dto.parentId ?? null,
           sprintId: dto.sprintId ?? null,
           storyPoints: dto.storyPoints ?? null,
+          teamId: dto.teamId ?? null,
+          startDate: dto.startDate ? new Date(dto.startDate) : null,
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           rank,
           labels: dto.labelIds?.length
             ? { create: dto.labelIds.map((labelId) => ({ labelId })) }
@@ -162,6 +178,86 @@ export class IssuesService {
   }
 
   // ---------------------------------------------------------------------------
+  // Create subtask (child of an existing issue)
+  // ---------------------------------------------------------------------------
+  async createSubtask(
+    issueKey: string,
+    dto: CreateSubtaskDto,
+    userId: string,
+  ): Promise<IssueDetailDto> {
+    const parent = await this.membership.getIssueForMember(issueKey, userId);
+    const project = await this.prisma.project.findUnique({
+      where: { id: parent.projectId },
+      select: { key: true },
+    });
+
+    const statusId = await this.resolveCreateStatus(parent.projectId);
+
+    const last = await this.prisma.issue.findFirst({
+      where: { projectId: parent.projectId, statusId },
+      orderBy: { rank: 'desc' },
+      select: { rank: true },
+    });
+    const rank = rankAfter(last?.rank);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const bumped = await tx.project.update({
+        where: { id: parent.projectId },
+        data: { issueSeq: { increment: 1 } },
+        select: { issueSeq: true, key: true },
+      });
+      const seq = bumped.issueSeq;
+
+      const issue = await tx.issue.create({
+        data: {
+          projectId: parent.projectId,
+          key: `${bumped.key}-${seq}`,
+          seq,
+          type: 'SUBTASK',
+          title: dto.title,
+          statusId,
+          reporterId: userId,
+          assigneeId: dto.assigneeId ?? null,
+          parentId: parent.id,
+          sprintId: parent.sprintId ?? null,
+          rank,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          issueId: issue.id,
+          actorId: userId,
+          field: 'created',
+          oldValue: null,
+          newValue: issue.key,
+        },
+      });
+
+      if (issue.assigneeId && issue.assigneeId !== userId) {
+        await tx.notification.create({
+          data: {
+            recipientId: issue.assigneeId,
+            type: NotificationType.ASSIGNED,
+            issueKey: issue.key,
+            message: `You were assigned to ${issue.key}: ${issue.title}`,
+          },
+        });
+      }
+
+      return issue;
+    });
+
+    const full = await this.loadDetail(created.id);
+    this.events.emit(project!.key, {
+      type: 'issue.created',
+      projectKey: project!.key,
+      issue: toIssueSummaryDto(full),
+    });
+    return toIssueDetailDto(full, project!.key);
+  }
+
+  // ---------------------------------------------------------------------------
   // List (with filters)
   // ---------------------------------------------------------------------------
   async findAll(
@@ -180,7 +276,9 @@ export class IssuesService {
     }
     if (query.statusId) where.statusId = query.statusId;
     if (query.assigneeId) where.assigneeId = query.assigneeId;
+    if (query.teamId) where.teamId = query.teamId;
     if (query.type) where.type = query.type;
+    if (query.parentId) where.parentId = query.parentId;
     if (query.search) {
       where.OR = [
         { title: { contains: query.search, mode: 'insensitive' } },
@@ -188,10 +286,28 @@ export class IssuesService {
       ];
     }
 
+    const order = query.order ?? 'asc';
+    const orderBy = query.orderBy ?? 'rank';
+
+    // Priority needs enum-weight ordering, which Prisma can't express directly,
+    // so we sort in memory for that case. Everything else maps to a column.
+    if (orderBy === 'priority') {
+      const issues = await this.prisma.issue.findMany({
+        where,
+        include: SUMMARY_INCLUDE,
+      });
+      issues.sort((a, b) => {
+        const diff =
+          (PRIORITY_WEIGHT[a.priority] ?? 0) - (PRIORITY_WEIGHT[b.priority] ?? 0);
+        return order === 'asc' ? diff : -diff;
+      });
+      return issues.map(toIssueSummaryDto);
+    }
+
     const issues = await this.prisma.issue.findMany({
       where,
       include: SUMMARY_INCLUDE,
-      orderBy: { rank: 'asc' },
+      orderBy: { [orderBy]: order },
     });
     return issues.map(toIssueSummaryDto);
   }
@@ -275,6 +391,59 @@ export class IssuesService {
           dto.storyPoints?.toString() ?? null,
         ),
       );
+    }
+
+    // --- Team (human label = team name) ---
+    if (dto.teamId !== undefined && dto.teamId !== existing.teamId) {
+      const [oldTeam, newTeam] = await Promise.all([
+        existing.teamId
+          ? this.prisma.team.findUnique({ where: { id: existing.teamId } })
+          : Promise.resolve(null),
+        dto.teamId
+          ? this.prisma.team.findUnique({ where: { id: dto.teamId } })
+          : Promise.resolve(null),
+      ]);
+      if (dto.teamId && !newTeam) {
+        throw new BadRequestException('teamId is not a valid team');
+      }
+      data.team = dto.teamId
+        ? { connect: { id: dto.teamId } }
+        : { disconnect: true };
+      activities.push(
+        this.activity(
+          existing.id,
+          userId,
+          'team',
+          oldTeam?.name ?? null,
+          newTeam?.name ?? null,
+        ),
+      );
+    }
+
+    // --- Dates (timeline) ---
+    if (dto.startDate !== undefined) {
+      const newDate = dto.startDate ? new Date(dto.startDate) : null;
+      const oldIso = existing.startDate
+        ? existing.startDate.toISOString()
+        : null;
+      const newIso = newDate ? newDate.toISOString() : null;
+      if (oldIso !== newIso) {
+        data.startDate = newDate;
+        activities.push(
+          this.activity(existing.id, userId, 'startDate', oldIso, newIso),
+        );
+      }
+    }
+    if (dto.dueDate !== undefined) {
+      const newDate = dto.dueDate ? new Date(dto.dueDate) : null;
+      const oldIso = existing.dueDate ? existing.dueDate.toISOString() : null;
+      const newIso = newDate ? newDate.toISOString() : null;
+      if (oldIso !== newIso) {
+        data.dueDate = newDate;
+        activities.push(
+          this.activity(existing.id, userId, 'dueDate', oldIso, newIso),
+        );
+      }
     }
 
     // --- Status (human label = status name) ---

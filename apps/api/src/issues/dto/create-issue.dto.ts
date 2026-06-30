@@ -2,6 +2,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
   MinLength,
@@ -49,4 +50,16 @@ export class CreateIssueDto implements ICreateIssueDto {
   @IsArray()
   @IsString({ each: true })
   labelIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  teamId?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  startDate?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  dueDate?: string;
 }
