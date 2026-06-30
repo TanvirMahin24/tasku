@@ -69,7 +69,7 @@ export default function RegisterPage() {
           required
         />
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}
@@ -77,7 +77,7 @@ export default function RegisterPage() {
           Create account
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Already have an account?{' '}
         <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">
           Sign in

@@ -90,8 +90,8 @@ export function IssueDrawer({
 
   return createPortal(
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-gray-900/30" onClick={onClose} aria-hidden />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <div className="absolute inset-0 bg-gray-900/30 dark:bg-black/60" onClick={onClose} aria-hidden />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-gray-900">
         <DrawerBody
           issueKey={issueKey}
           projectKey={projectKey}
@@ -219,7 +219,7 @@ function DrawerBody({
               if (next && next !== issue.title) patch({ title: next });
               else if (!next) setTitle(issue.title);
             }}
-            className="w-full rounded-md border border-transparent px-2 py-1 text-xl font-semibold text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
           />
 
           {issue.parent && (
@@ -229,13 +229,13 @@ function DrawerBody({
               </span>
               <Link
                 to={`/issues/${issue.parent.key}`}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm hover:border-brand-300 hover:bg-white"
+                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm hover:border-brand-300 hover:bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
               >
                 <IssueTypeIcon type={issue.parent.type} />
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
                   {issue.parent.key}
                 </span>
-                <span className="text-gray-700">{issue.parent.title}</span>
+                <span className="text-gray-700 dark:text-gray-200">{issue.parent.title}</span>
               </Link>
             </div>
           )}
@@ -292,7 +292,7 @@ function DrawerBody({
         </div>
 
         {/* Sidebar fields */}
-        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-gray-200 bg-gray-50 px-5 py-5">
+        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-gray-200 bg-gray-50 px-5 py-5 dark:border-gray-700 dark:bg-gray-950/40">
           {errorMsg && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
               {errorMsg}
@@ -412,10 +412,10 @@ function DrawerBody({
             />
           </Field>
 
-          <div className="space-y-1.5 border-t border-gray-200 pt-3 text-xs text-gray-500">
+          <div className="space-y-1.5 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
             <div className="flex items-center justify-between">
               <span>Reporter</span>
-              <span className="flex items-center gap-1.5 font-medium text-gray-700">
+              <span className="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-200">
                 <Avatar user={issue.reporter} size="xs" />
                 {issue.reporter.displayName}
               </span>
@@ -467,14 +467,14 @@ function CommentsPanel({
               <Avatar user={c.author} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {c.author.displayName}
                   </span>
                   <span className="text-xs text-gray-400">
                     {relativeTime(c.createdAt)}
                   </span>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
                   {c.body}
                 </p>
               </div>
@@ -552,7 +552,7 @@ function SubtasksPanel({
   return (
     <div className="space-y-2">
       {items.length > 0 && (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
           {items.map((c) => {
             const done = doneStatusIds.has(c.statusId);
             return (
@@ -786,7 +786,7 @@ function TimeTrackingPanel({
         </div>
         <div>
           <span className="mb-1 block text-xs text-gray-500">Logged</span>
-          <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
             {formatMinutes(timeSpent)}
           </p>
         </div>
@@ -817,7 +817,7 @@ function TimeTrackingPanel({
           }
           addLog.mutate(mins);
         }}
-        className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
+        className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
       >
         <div className="flex items-center gap-2">
           <input
@@ -852,7 +852,7 @@ function TimeTrackingPanel({
       {error && <p className="text-xs text-red-600">{error}</p>}
 
       {worklogs.length > 0 && (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
           {worklogs.map((w) => (
             <li key={w.id} className="flex items-start gap-2.5 px-3 py-2 text-sm">
               <Avatar user={w.user} size="xs" className="mt-0.5" />
@@ -970,7 +970,7 @@ function LinksPanel({
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
             {label}
           </p>
-          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
             {items.map((l) => (
               <li key={l.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                 <IssueTypeIcon type={l.issue.type} />
@@ -999,7 +999,7 @@ function LinksPanel({
       ))}
 
       {adding ? (
-        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
             <Select
               value={linkType}
@@ -1343,7 +1343,7 @@ function DrawerHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3">
+    <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-700">
       <a
         href={`/issues/${issueKey}`}
         className="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"

@@ -59,6 +59,7 @@ export function toStatusDto(s: any): StatusDto {
     name: s.name,
     category: s.category,
     order: s.order,
+    wipLimit: s.wipLimit ?? null,
   };
 }
 
@@ -126,6 +127,7 @@ export function toBoardSummaryDto(b: any): BoardSummaryDto {
     type: b.type,
     teamId: b.teamId ?? null,
     isDefault: b.isDefault,
+    swimlaneBy: b.swimlaneBy,
   };
 }
 

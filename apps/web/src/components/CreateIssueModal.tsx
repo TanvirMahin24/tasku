@@ -231,7 +231,7 @@ export function CreateIssueModal({
         </div>
 
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}
@@ -251,7 +251,7 @@ function FormRow({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-700">
+      <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </span>

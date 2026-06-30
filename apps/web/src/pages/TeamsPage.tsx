@@ -76,21 +76,21 @@ function TeamCard({ team }: { team: TeamDto }) {
   return (
     <Link
       to={`/teams/${team.id}`}
-      className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
+      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         <span
           className="h-3.5 w-3.5 shrink-0 rounded-full"
           style={{ backgroundColor: team.color }}
         />
-        <p className="truncate font-semibold text-gray-900 group-hover:text-brand-700">
+        <p className="truncate font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-700">
           {team.name}
         </p>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500">
+      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
         {team.description || 'No description'}
       </p>
-      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+      <div className="mt-3 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
         <div className="flex -space-x-2">
           {team.members.slice(0, 5).map((m) => (
             <Avatar key={m.user.id} user={m.user} size="xs" />
@@ -99,7 +99,7 @@ function TeamCard({ team }: { team: TeamDto }) {
             <span className="text-xs text-gray-400">No members</span>
           )}
           {team.members.length > 5 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[9px] font-semibold text-gray-500 ring-2 ring-white">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-[9px] font-semibold text-gray-500 dark:text-gray-400 ring-2 ring-white dark:ring-gray-900">
               +{team.members.length - 5}
             </span>
           )}
@@ -183,7 +183,7 @@ export function CreateTeamModal({
     >
       <form id="create-team-form" onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Name <span className="text-red-500">*</span>
           </span>
           <input
@@ -195,7 +195,7 @@ export function CreateTeamModal({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Description
           </span>
           <textarea
@@ -206,13 +206,13 @@ export function CreateTeamModal({
           />
         </label>
         <div>
-          <span className="mb-1.5 block text-sm font-medium text-gray-700">
+          <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Color
           </span>
           <ColorPicker value={color} onChange={setColor} />
         </div>
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}

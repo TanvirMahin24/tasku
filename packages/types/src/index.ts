@@ -9,6 +9,8 @@ export type SprintState = 'FUTURE' | 'ACTIVE' | 'CLOSED';
 export type LinkType = 'BLOCKS' | 'IS_BLOCKED_BY' | 'RELATES_TO' | 'DUPLICATES';
 export type TeamRole = 'LEAD' | 'MEMBER';
 export type BoardType = 'KANBAN' | 'SCRUM';
+export type BoardSwimlane = 'NONE' | 'ASSIGNEE' | 'EPIC' | 'TEAM' | 'PRIORITY';
+export type ThemeMode = 'light' | 'dark' | 'system';
 export type NotificationType =
   | 'ASSIGNED'
   | 'MENTIONED'
@@ -61,6 +63,7 @@ export interface StatusDto {
   name: string;
   category: StatusCategory;
   order: number;
+  wipLimit: number | null;
 }
 
 export interface LabelDto {
@@ -189,6 +192,7 @@ export interface BoardSummaryDto {
   type: BoardType;
   teamId: string | null;
   isDefault: boolean;
+  swimlaneBy: BoardSwimlane;
 }
 
 export interface BoardFilter {
@@ -348,6 +352,7 @@ export interface CreateBoardDto {
   type?: BoardType;
   teamId?: string | null;
   filter?: BoardFilter;
+  swimlaneBy?: BoardSwimlane;
 }
 
 export interface UpdateBoardDto {
@@ -355,6 +360,38 @@ export interface UpdateBoardDto {
   type?: BoardType;
   teamId?: string | null;
   filter?: BoardFilter;
+  swimlaneBy?: BoardSwimlane;
+}
+
+// ---------------------------------------------------------------------------
+// Project settings (statuses / workflow, components, members)
+// ---------------------------------------------------------------------------
+
+export interface CreateStatusDto {
+  name: string;
+  category: StatusCategory;
+}
+
+export interface UpdateStatusDto {
+  name?: string;
+  category?: StatusCategory;
+  wipLimit?: number | null;
+}
+
+export interface ReorderStatusesDto {
+  statusIds: string[]; // new order
+}
+
+export interface CreateComponentDto {
+  name: string;
+}
+
+export interface UpdateComponentDto {
+  name: string;
+}
+
+export interface UpdateMemberRoleDto {
+  role: Role;
 }
 
 // Query params for the list view

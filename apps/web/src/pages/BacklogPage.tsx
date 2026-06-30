@@ -194,8 +194,8 @@ function SprintSection({
   const points = issues.reduce((n, i) => n + (i.storyPoints ?? 0), 0);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-gray-50/60 px-3 py-2.5">
+    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/50 px-3 py-2.5">
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -205,11 +205,11 @@ function SprintSection({
           ) : (
             <ChevronRight className="h-4 w-4 text-gray-400" />
           )}
-          <span className="truncate font-semibold text-gray-900">
+          <span className="truncate font-semibold text-gray-900 dark:text-gray-100">
             {sprint.name}
           </span>
           {sprint.state === 'ACTIVE' && (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+            <span className="rounded-full bg-green-100 dark:bg-green-500/15 px-2 py-0.5 text-[11px] font-semibold text-green-700 dark:text-green-300">
               Active
             </span>
           )}
@@ -221,7 +221,7 @@ function SprintSection({
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+          <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
             {issues.length} issues · {points} pts
           </span>
           {sprint.state === 'FUTURE' && (
@@ -248,7 +248,7 @@ function SprintSection({
       </div>
 
       {error && (
-        <p className="bg-red-50 px-3 py-1.5 text-xs text-red-700">{error}</p>
+        <p className="bg-red-50 dark:bg-red-500/10 px-3 py-1.5 text-xs text-red-700 dark:text-red-300">{error}</p>
       )}
 
       {open && (
@@ -287,8 +287,8 @@ function BacklogSection({
   const points = issues.reduce((n, i) => n + (i.storyPoints ?? 0), 0);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50/60 px-3 py-2.5">
+    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/50 px-3 py-2.5">
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex flex-1 items-center gap-2 text-left"
@@ -299,9 +299,9 @@ function BacklogSection({
             <ChevronRight className="h-4 w-4 text-gray-400" />
           )}
           <CircleDot className="h-4 w-4 text-gray-400" />
-          <span className="font-semibold text-gray-900">Backlog</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Backlog</span>
         </button>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+        <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
           {issues.length} issues · {points} pts
         </span>
       </div>
@@ -361,7 +361,7 @@ function IssueRows({
       {issues.length === 0 ? (
         <p className="px-4 py-6 text-center text-sm text-gray-400">{emptyLabel}</p>
       ) : (
-        <ul className="divide-y divide-gray-50">
+        <ul className="divide-y divide-gray-50 dark:divide-gray-700">
           {issues.map((issue) => {
             const assignee = issue.assignee
               ? users.find((u) => u.id === issue.assignee?.id) ?? issue.assignee
@@ -369,17 +369,17 @@ function IssueRows({
             return (
               <li
                 key={issue.id}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50"
+                className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <button
                   onClick={() => onOpenIssue(issue.key)}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
                   <IssueTypeIcon type={issue.type} />
-                  <span className="shrink-0 text-xs font-semibold text-gray-500">
+                  <span className="shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">
                     {issue.key}
                   </span>
-                  <span className="truncate text-sm text-gray-800">
+                  <span className="truncate text-sm text-gray-800 dark:text-gray-200">
                     {issue.title}
                   </span>
                   <span className="flex shrink-0 gap-1">
@@ -392,7 +392,7 @@ function IssueRows({
                 <div className="flex shrink-0 items-center gap-2.5">
                   <PriorityIcon priority={issue.priority} />
                   {issue.storyPoints != null && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold text-gray-600">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400">
                       {issue.storyPoints}
                     </span>
                   )}
@@ -406,7 +406,7 @@ function IssueRows({
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-md border border-gray-200 bg-white py-1 pl-2 pr-6 text-xs text-gray-600 hover:border-gray-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 pl-2 pr-6 text-xs text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                     title="Move to sprint"
                   >
                     <option value={BACKLOG}>Backlog</option>
@@ -425,7 +425,7 @@ function IssueRows({
 
       <button
         onClick={onAddIssue}
-        className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-brand-600"
+        className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-brand-600"
       >
         <Plus className="h-4 w-4" /> Create issue
       </button>
@@ -502,7 +502,7 @@ function CreateSprintModal({
     >
       <form id="create-sprint-form" onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Name <span className="text-red-500">*</span>
           </span>
           <input
@@ -514,7 +514,7 @@ function CreateSprintModal({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Goal
           </span>
           <textarea
@@ -525,7 +525,7 @@ function CreateSprintModal({
           />
         </label>
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}

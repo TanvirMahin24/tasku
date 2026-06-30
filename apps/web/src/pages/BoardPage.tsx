@@ -22,23 +22,32 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus, Rows3, Tag, User } from 'lucide-react';
 import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
 import type {
   BoardDto,
   BoardSummaryDto,
+  BoardSwimlane,
   IssueSummaryDto,
   MoveIssueDto,
+  StatusDto,
 } from '@tasku/types';
-import { apiErrorMessage, boardsApi, issuesApi, projectsApi } from '@/lib/api';
+import {
+  apiErrorMessage,
+  boardsApi,
+  issuesApi,
+  projectsApi,
+} from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
-import { STATUS_CATEGORY_META } from '@/lib/format';
+import { PRIORITY_META, STATUS_CATEGORY_META } from '@/lib/format';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
+import { useAuthStore } from '@/store/auth';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Badge } from '@/components/ui/Badge';
+import { Badge, LabelBadge } from '@/components/ui/Badge';
 import { IssueCardContent } from '@/components/IssueCard';
 import { IssueDrawer } from '@/components/IssueDrawer';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
@@ -51,6 +60,113 @@ export default function BoardPage() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Swimlanes
+// ---------------------------------------------------------------------------
+
+const SWIMLANE_LABEL: Record<BoardSwimlane, string> = {
+  NONE: 'No swimlanes',
+  ASSIGNEE: 'By assignee',
+  EPIC: 'By epic',
+  TEAM: 'By team',
+  PRIORITY: 'By priority',
+};
+
+const SWIMLANE_OPTIONS: BoardSwimlane[] = [
+  'NONE',
+  'ASSIGNEE',
+  'TEAM',
+  'PRIORITY',
+  'EPIC',
+];
+
+interface Lane {
+  id: string;
+  title: string;
+}
+
+/** Resolve which lane an issue belongs to for a given grouping. */
+function laneKeyFor(issue: IssueSummaryDto, by: BoardSwimlane): string {
+  switch (by) {
+    case 'ASSIGNEE':
+      return issue.assignee?.id ?? '__none__';
+    case 'TEAM':
+      return issue.team?.id ?? '__none__';
+    case 'PRIORITY':
+      return issue.priority;
+    case 'EPIC':
+      return issue.parentId ?? '__none__';
+    default:
+      return '__all__';
+  }
+}
+
+function buildLanes(board: BoardDto, by: BoardSwimlane): Lane[] {
+  if (by === 'NONE') return [{ id: '__all__', title: '' }];
+
+  if (by === 'PRIORITY') {
+    // Stable, meaningful ordering for priority lanes.
+    const order: IssueSummaryDto['priority'][] = [
+      'HIGHEST',
+      'HIGH',
+      'MEDIUM',
+      'LOW',
+      'LOWEST',
+    ];
+    return order.map((p) => ({ id: p, title: PRIORITY_META[p].label }));
+  }
+
+  // Collect distinct lane keys from the issues, preserving a useful title.
+  const titles = new Map<string, string>();
+  for (const col of board.columns) {
+    for (const issue of col.issues) {
+      const k = laneKeyFor(issue, by);
+      if (titles.has(k)) continue;
+      if (by === 'ASSIGNEE') {
+        titles.set(k, issue.assignee?.displayName ?? 'Unassigned');
+      } else if (by === 'TEAM') {
+        titles.set(k, issue.team?.name ?? 'No team');
+      } else if (by === 'EPIC') {
+        titles.set(k, issue.parentId ? `Epic ${issue.parentId.slice(0, 6)}` : 'No epic');
+      }
+    }
+  }
+  const lanes = [...titles.entries()].map(([id, title]) => ({ id, title }));
+  // Push the "none" lane to the end.
+  lanes.sort((a, b) => {
+    if (a.id === '__none__') return 1;
+    if (b.id === '__none__') return -1;
+    return a.title.localeCompare(b.title);
+  });
+  return lanes.length ? lanes : [{ id: '__all__', title: '' }];
+}
+
+// ---------------------------------------------------------------------------
+// Quick filters
+// ---------------------------------------------------------------------------
+
+interface QuickFilter {
+  assigneeIds: Set<string>;
+  labelIds: Set<string>;
+  myIssues: boolean;
+}
+
+function matchesFilter(
+  issue: IssueSummaryDto,
+  filter: QuickFilter,
+  currentUserId: string | undefined,
+): boolean {
+  if (filter.myIssues && issue.assignee?.id !== currentUserId) return false;
+  if (filter.assigneeIds.size > 0) {
+    const id = issue.assignee?.id ?? '__none__';
+    if (!filter.assigneeIds.has(id)) return false;
+  }
+  if (filter.labelIds.size > 0) {
+    if (!issue.labels.some((l) => filter.labelIds.has(l.id))) return false;
+  }
+  return true;
+}
+
 function BoardView({
   projectKey: key,
   boardId,
@@ -61,12 +177,20 @@ function BoardView({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   useProjectSocket(key);
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const [activeIssue, setActiveIssue] = useState<IssueSummaryDto | null>(null);
   const [openIssueKey, setOpenIssueKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createBoardOpen, setCreateBoardOpen] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
+
+  // Quick filter state (client-side only).
+  const [filter, setFilter] = useState<QuickFilter>({
+    assigneeIds: new Set(),
+    labelIds: new Set(),
+    myIssues: false,
+  });
 
   const boardQueryKey: QueryKey = boardId
     ? qk.boardById(boardId)
@@ -88,6 +212,21 @@ function BoardView({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  const swimlaneBy: BoardSwimlane = board?.board?.swimlaneBy ?? 'NONE';
+
+  const updateBoard = useMutation({
+    mutationFn: (next: BoardSwimlane) => {
+      const id = board?.board?.id;
+      if (!id) return Promise.reject(new Error('Default board cannot be configured.'));
+      return boardsApi.update(id, { swimlaneBy: next });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boardQueryKey });
+      queryClient.invalidateQueries({ queryKey: qk.boards(key) });
+    },
+    onError: (err) => setMoveError(apiErrorMessage(err, 'Could not update board')),
+  });
+
   const move = useMutation({
     mutationFn: ({ issueKey, dto }: { issueKey: string; dto: MoveIssueDto }) =>
       issuesApi.move(issueKey, dto),
@@ -106,9 +245,30 @@ function BoardView({
     return map;
   }, [board]);
 
+  // Distinct assignees / labels available for the quick filter bar.
+  const { assignees, labels } = useMemo(() => {
+    const aMap = new Map<string, NonNullable<IssueSummaryDto['assignee']>>();
+    const lMap = new Map<string, IssueSummaryDto['labels'][number]>();
+    board?.columns.forEach((c) =>
+      c.issues.forEach((i) => {
+        if (i.assignee) aMap.set(i.assignee.id, i.assignee);
+        i.labels.forEach((l) => lMap.set(l.id, l));
+      }),
+    );
+    return {
+      assignees: [...aMap.values()],
+      labels: [...lMap.values()],
+    };
+  }, [board]);
+
+  const filterActive =
+    filter.myIssues || filter.assigneeIds.size > 0 || filter.labelIds.size > 0;
+
   function findColumnOfDroppable(id: string): number | null {
     if (!board) return null;
-    const colByStatus = board.columns.findIndex((c) => c.status.id === id);
+    // Swimlane columns use "<laneId>::<statusId>" droppable ids; strip the lane.
+    const statusId = id.includes('::') ? id.split('::')[1] : id;
+    const colByStatus = board.columns.findIndex((c) => c.status.id === statusId);
     if (colByStatus !== -1) return colByStatus;
     const entry = issueIndex.get(id);
     return entry ? entry.col : null;
@@ -137,8 +297,10 @@ function BoardView({
       (i) => i.id !== activeId,
     );
 
+    // Did we drop onto a column body (status droppable) or onto a card?
+    const overStatusId = overId.includes('::') ? overId.split('::')[1] : overId;
     let insertAt = destIssues.length;
-    if (overId !== targetStatus.id) {
+    if (overStatusId !== targetStatus.id) {
       const overIdx = destIssues.findIndex((i) => i.id === overId);
       if (overIdx !== -1) insertAt = overIdx;
     }
@@ -189,7 +351,7 @@ function BoardView({
     return (
       <>
         <PageHeader title="Board" />
-        <div className="p-6 text-sm text-gray-500">Board not found.</div>
+        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Board not found.</div>
       </>
     );
   }
@@ -197,6 +359,9 @@ function BoardView({
   const totalIssues = board.columns.reduce((n, c) => n + c.issues.length, 0);
   const currentBoardId = board.board?.id ?? boardId ?? null;
   const currentBoardName = board.board?.name ?? 'Board';
+  const canConfigureSwimlanes = !!board.board?.id; // default board has no row to PATCH
+
+  const lanes = buildLanes(board, swimlaneBy);
 
   return (
     <>
@@ -212,57 +377,123 @@ function BoardView({
               onCreate={() => setCreateBoardOpen(true)}
             />
             {board.board?.teamId && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
                 <span className="h-2 w-2 rounded-full bg-brand-500" />
                 Team board
               </span>
             )}
             {board.activeSprint ? (
-              <Badge className="bg-green-100 text-green-700">
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300">
                 {board.activeSprint.name} · active
               </Badge>
             ) : (
               <span className="text-gray-400">No active sprint</span>
             )}
-            <span className="text-gray-300">·</span>
+            <span className="text-gray-300 dark:text-gray-600">·</span>
             <span>{totalIssues} issues</span>
           </span>
         }
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Create issue
-          </Button>
+          <div className="flex items-center gap-2">
+            <SwimlaneControl
+              value={swimlaneBy}
+              disabled={!canConfigureSwimlanes || updateBoard.isPending}
+              onChange={(v) => updateBoard.mutate(v)}
+            />
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Create issue
+            </Button>
+          </div>
         }
       />
 
+      <QuickFilterBar
+        assignees={assignees}
+        labels={labels}
+        filter={filter}
+        active={filterActive}
+        onChange={setFilter}
+      />
+
       {moveError && (
-        <div className="bg-red-50 px-6 py-1.5 text-sm text-red-700">{moveError}</div>
+        <div className="bg-red-50 px-6 py-1.5 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          {moveError}
+        </div>
       )}
 
-      <div className="flex-1 overflow-x-auto overflow-y-hidden bg-gray-50 p-4 scrollbar-thin">
+      <div className="flex-1 overflow-auto bg-gray-50 p-4 scrollbar-thin dark:bg-gray-950">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
         >
-          <div className="flex h-full min-h-0 gap-3">
-            {board.columns.map((column) => (
-              <BoardColumn
-                key={column.status.id}
-                statusId={column.status.id}
-                name={column.status.name}
-                category={column.status.category}
-                issues={column.issues}
-                onCardClick={(issueKey) => setOpenIssueKey(issueKey)}
-              />
-            ))}
-            {board.columns.length === 0 && (
-              <p className="text-sm text-gray-400">
-                This project has no workflow statuses.
-              </p>
-            )}
-          </div>
+          {board.columns.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              This project has no workflow statuses.
+            </p>
+          ) : swimlaneBy === 'NONE' ? (
+            <div className="flex h-full min-h-0 gap-3">
+              {board.columns.map((column) => (
+                <BoardColumn
+                  key={column.status.id}
+                  status={column.status}
+                  issues={column.issues.filter((i) =>
+                    matchesFilter(i, filter, currentUserId),
+                  )}
+                  fullCount={column.issues.length}
+                  onCardClick={(issueKey) => setOpenIssueKey(issueKey)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-w-fit flex-col gap-4">
+              {lanes.map((lane) => {
+                const laneColumns = board.columns.map((c) => ({
+                  status: c.status,
+                  issues: c.issues.filter(
+                    (i) =>
+                      laneKeyFor(i, swimlaneBy) === lane.id &&
+                      matchesFilter(i, filter, currentUserId),
+                  ),
+                }));
+                const laneTotal = laneColumns.reduce(
+                  (n, c) => n + c.issues.length,
+                  0,
+                );
+                return (
+                  <div key={lane.id}>
+                    <div className="mb-2 flex items-center gap-2 px-1">
+                      <Rows3 className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        {lane.title}
+                      </span>
+                      <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                        {laneTotal}
+                      </span>
+                    </div>
+                    <div className="flex gap-3">
+                      {laneColumns.map((column) => (
+                        <BoardColumn
+                          key={column.status.id}
+                          status={column.status}
+                          droppableId={`${lane.id}::${column.status.id}`}
+                          issues={column.issues}
+                          fullCount={
+                            board.columns.find(
+                              (c) => c.status.id === column.status.id,
+                            )?.issues.length ?? column.issues.length
+                          }
+                          laned
+                          onCardClick={(issueKey) => setOpenIssueKey(issueKey)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <DragOverlay>
             {activeIssue ? (
@@ -301,6 +532,178 @@ function BoardView({
 }
 
 // ---------------------------------------------------------------------------
+// Swimlane control
+// ---------------------------------------------------------------------------
+
+function SwimlaneControl({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: BoardSwimlane;
+  disabled?: boolean;
+  onChange: (v: BoardSwimlane) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        title={
+          disabled
+            ? 'Swimlanes are available on custom boards'
+            : 'Group into swimlanes'
+        }
+        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+      >
+        <Rows3 className="h-4 w-4 text-gray-400" />
+        {SWIMLANE_LABEL[value]}
+        <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+          {SWIMLANE_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => {
+                onChange(opt);
+                setOpen(false);
+              }}
+              className={clsx(
+                'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700/60',
+                opt === value
+                  ? 'font-semibold text-brand-700 dark:text-brand-300'
+                  : 'text-gray-700 dark:text-gray-200',
+              )}
+            >
+              {SWIMLANE_LABEL[opt]}
+              {opt === value && <Check className="h-3.5 w-3.5 text-brand-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick filter bar
+// ---------------------------------------------------------------------------
+
+function QuickFilterBar({
+  assignees,
+  labels,
+  filter,
+  active,
+  onChange,
+}: {
+  assignees: NonNullable<IssueSummaryDto['assignee']>[];
+  labels: IssueSummaryDto['labels'];
+  filter: QuickFilter;
+  active: boolean;
+  onChange: (next: QuickFilter) => void;
+}) {
+  function toggleAssignee(id: string) {
+    const next = new Set(filter.assigneeIds);
+    next.has(id) ? next.delete(id) : next.add(id);
+    onChange({ ...filter, assigneeIds: next });
+  }
+  function toggleLabel(id: string) {
+    const next = new Set(filter.labelIds);
+    next.has(id) ? next.delete(id) : next.add(id);
+    onChange({ ...filter, labelIds: next });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-6 py-2 dark:border-gray-700 dark:bg-gray-900">
+      <button
+        onClick={() => onChange({ ...filter, myIssues: !filter.myIssues })}
+        className={clsx(
+          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+          filter.myIssues
+            ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/15 dark:text-brand-300'
+            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+        )}
+      >
+        <User className="h-3.5 w-3.5" /> My issues
+      </button>
+
+      {assignees.length > 0 && (
+        <div className="flex items-center gap-1">
+          {assignees.map((u) => {
+            const on = filter.assigneeIds.has(u.id);
+            return (
+              <button
+                key={u.id}
+                onClick={() => toggleAssignee(u.id)}
+                title={u.displayName}
+                className={clsx(
+                  'rounded-full ring-2 transition-all',
+                  on
+                    ? 'ring-brand-500'
+                    : 'opacity-60 ring-transparent hover:opacity-100',
+                )}
+              >
+                <Avatar user={u} size="sm" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {labels.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <Tag className="h-3.5 w-3.5 text-gray-400" />
+          {labels.map((l) => {
+            const on = filter.labelIds.has(l.id);
+            return (
+              <button
+                key={l.id}
+                onClick={() => toggleLabel(l.id)}
+                className={clsx(
+                  'rounded transition-opacity',
+                  on ? 'ring-2 ring-brand-500' : 'opacity-60 hover:opacity-100',
+                )}
+              >
+                <LabelBadge label={l} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {active && (
+        <button
+          onClick={() =>
+            onChange({
+              assigneeIds: new Set(),
+              labelIds: new Set(),
+              myIssues: false,
+            })
+          }
+          className="ml-auto text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-300"
+        >
+          Clear filters
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Board switcher
 // ---------------------------------------------------------------------------
 
@@ -333,14 +736,14 @@ function BoardSwitcher({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
       >
         {currentName}
         <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-8 z-30 w-56 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl">
+        <div className="absolute left-0 top-8 z-30 w-56 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
           <div className="max-h-64 overflow-y-auto scrollbar-thin">
             {boards.length === 0 ? (
               <p className="px-3 py-2 text-sm text-gray-400">No boards</p>
@@ -353,16 +756,16 @@ function BoardSwitcher({
                     setOpen(false);
                   }}
                   className={clsx(
-                    'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50',
-                    (b.id === currentBoardId || (b.isDefault && !currentBoardId))
-                      ? 'font-semibold text-brand-700'
-                      : 'text-gray-700',
+                    'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700/60',
+                    b.id === currentBoardId || (b.isDefault && !currentBoardId)
+                      ? 'font-semibold text-brand-700 dark:text-brand-300'
+                      : 'text-gray-700 dark:text-gray-200',
                   )}
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="truncate">{b.name}</span>
                     {b.isDefault && (
-                      <span className="rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500">
+                      <span className="rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
                         default
                       </span>
                     )}
@@ -379,7 +782,7 @@ function BoardSwitcher({
               onCreate();
               setOpen(false);
             }}
-            className="mt-1 flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-gray-50"
+            className="mt-1 flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:text-brand-300 dark:hover:bg-gray-700/60"
           >
             <Plus className="h-4 w-4" /> New board
           </button>
@@ -394,36 +797,74 @@ function BoardSwitcher({
 // ---------------------------------------------------------------------------
 
 function BoardColumn({
-  statusId,
-  name,
-  category,
+  status,
   issues,
+  fullCount,
+  laned,
+  droppableId,
   onCardClick,
 }: {
-  statusId: string;
-  name: string;
-  category: BoardDto['columns'][number]['status']['category'];
+  status: StatusDto;
   issues: IssueSummaryDto[];
+  /** Unfiltered count in this status — what the WIP limit is measured against. */
+  fullCount: number;
+  laned?: boolean;
+  /** Unique droppable id (lane-prefixed in swimlane mode). Defaults to status.id. */
+  droppableId?: string;
   onCardClick: (issueKey: string) => void;
 }) {
-  const meta = STATUS_CATEGORY_META[category];
-  const { setNodeRef, isOver } = useDroppable({ id: statusId });
+  const meta = STATUS_CATEGORY_META[status.category];
+  // dnd-kit needs unique droppable ids; suffix lane columns so they don't clash.
+  const { setNodeRef, isOver } = useDroppable({ id: droppableId ?? status.id });
+
+  const overLimit = status.wipLimit != null && fullCount > status.wipLimit;
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col rounded-lg bg-gray-100/80">
-      <div className="flex items-center justify-between px-3 py-2.5">
+    <div
+      className={clsx(
+        'flex w-72 shrink-0 flex-col rounded-lg bg-gray-100/80 dark:bg-gray-900/70',
+        laned ? 'min-h-[7rem]' : 'h-full',
+      )}
+    >
+      <div
+        className={clsx(
+          'flex items-center justify-between rounded-t-lg px-3 py-2.5',
+          overLimit && 'bg-red-100/70 dark:bg-red-500/15',
+        )}
+      >
         <div className="flex items-center gap-2">
           <span
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: meta.color }}
           />
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-            {name}
+          <span
+            className={clsx(
+              'text-xs font-semibold uppercase tracking-wide',
+              overLimit
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-gray-600 dark:text-gray-300',
+            )}
+          >
+            {status.name}
           </span>
         </div>
-        <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-500">
-          {issues.length}
-        </span>
+        {status.wipLimit != null ? (
+          <span
+            className={clsx(
+              'rounded-full px-1.5 text-[11px] font-semibold',
+              overLimit
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-300',
+            )}
+            title={`${fullCount} of WIP limit ${status.wipLimit}`}
+          >
+            {fullCount} / {status.wipLimit}
+          </span>
+        ) : (
+          <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+            {issues.length}
+          </span>
+        )}
       </div>
 
       <SortableContext
@@ -434,7 +875,7 @@ function BoardColumn({
           ref={setNodeRef}
           className={clsx(
             'flex-1 space-y-2 overflow-y-auto px-2 pb-2 scrollbar-thin transition-colors',
-            isOver && 'bg-brand-50/60',
+            isOver && 'bg-brand-50/60 dark:bg-brand-500/10',
           )}
         >
           {issues.map((issue) => (
@@ -445,7 +886,7 @@ function BoardColumn({
             />
           ))}
           {issues.length === 0 && (
-            <div className="rounded-md border border-dashed border-gray-300 py-6 text-center text-xs text-gray-400">
+            <div className="rounded-md border border-dashed border-gray-300 py-6 text-center text-xs text-gray-400 dark:border-gray-700">
               Drop issues here
             </div>
           )}

@@ -40,7 +40,7 @@ export function LabelPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-[34px] w-full flex-wrap items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left hover:border-gray-400"
+        className="flex min-h-[34px] w-full flex-wrap items-center gap-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-left hover:border-gray-400"
       >
         {selected.length === 0 ? (
           <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
@@ -52,7 +52,7 @@ export function LabelPicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 shadow-xl">
           {labels.length === 0 ? (
             <p className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-400">
               <Tag className="h-3.5 w-3.5" /> No labels in this project
@@ -66,14 +66,14 @@ export function LabelPicker({
                     key={l.id}
                     type="button"
                     onClick={() => toggle(l.id)}
-                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-gray-50"
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700/60"
                   >
                     <span className="inline-flex items-center gap-2">
                       <span
                         className="h-3 w-3 rounded-sm"
                         style={{ backgroundColor: l.color }}
                       />
-                      <span className="text-gray-700">{l.name}</span>
+                      <span className="text-gray-700 dark:text-gray-200">{l.name}</span>
                     </span>
                     <Check
                       className={clsx(

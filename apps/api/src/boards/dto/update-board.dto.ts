@@ -7,7 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BoardType } from '@prisma/client';
+import { BoardSwimlane, BoardType } from '@prisma/client';
 import type { UpdateBoardDto as IUpdateBoardDto } from '@tasku/types';
 import { BoardFilterDto } from './board-filter.dto';
 
@@ -30,4 +30,8 @@ export class UpdateBoardDto implements IUpdateBoardDto {
   @ValidateNested()
   @Type(() => BoardFilterDto)
   filter?: BoardFilterDto;
+
+  @IsOptional()
+  @IsEnum(BoardSwimlane)
+  swimlaneBy?: BoardSwimlane;
 }

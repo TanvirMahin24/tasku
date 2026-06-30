@@ -6,6 +6,10 @@ import App from './App';
 import './index.css';
 // Side-effect import: wires axios interceptors to the auth store on startup.
 import './store/auth';
+import { initTheme } from './store/theme';
+
+// Apply the persisted theme before the first paint (avoids a light flash).
+initTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -126,7 +126,7 @@ export default function ListPage() {
       <PageHeader title="List" subtitle="All issues in this project" />
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-6 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -169,7 +169,7 @@ export default function ListPage() {
         />
       </div>
 
-      <div className="flex-1 overflow-auto scrollbar-thin bg-gray-50 p-6">
+      <div className="flex-1 overflow-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
         {isLoading ? (
           <PageSpinner label="Loading issues…" />
         ) : !issues || issues.length === 0 ? (
@@ -179,17 +179,17 @@ export default function ListPage() {
             description="Try adjusting the filters above."
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   <Th className="w-10">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleAll}
                       title="Select all (filtered)"
-                      className="h-4 w-4 rounded border-gray-300 text-brand-600"
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-brand-600"
                     />
                   </Th>
                   <Th className="w-10">Type</Th>
@@ -221,7 +221,7 @@ export default function ListPage() {
                   />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {issues.map((issue) => (
                   <IssueRow
                     key={issue.id}
@@ -291,7 +291,7 @@ function BulkBar({
   const [removeLabelIds, setRemoveLabelIds] = useState<string[]>([]);
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-gray-200 bg-white px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
+    <div className="sticky bottom-0 z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
           {count} selected
@@ -401,7 +401,7 @@ function BulkBar({
 
         <button
           onClick={onClear}
-          className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-700"
+          className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         >
           <X className="h-4 w-4" /> Clear
         </button>
@@ -429,7 +429,9 @@ function IssueRow({
       onClick={onClick}
       className={clsx(
         'cursor-pointer transition-colors',
-        selected ? 'bg-brand-50/60 hover:bg-brand-50' : 'hover:bg-gray-50',
+        selected
+          ? 'bg-brand-50/60 dark:bg-brand-500/15 hover:bg-brand-50 dark:hover:bg-brand-500/20'
+          : 'hover:bg-gray-50 dark:hover:bg-gray-800',
       )}
     >
       <Td onClick={(e) => e.stopPropagation()}>
@@ -437,17 +439,17 @@ function IssueRow({
           type="checkbox"
           checked={selected}
           onChange={onToggle}
-          className="h-4 w-4 rounded border-gray-300 text-brand-600"
+          className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-brand-600"
         />
       </Td>
       <Td>
         <IssueTypeIcon type={issue.type} />
       </Td>
-      <Td className="whitespace-nowrap font-mono text-xs font-semibold text-gray-500">
+      <Td className="whitespace-nowrap font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
         {issue.key}
       </Td>
       <Td className="max-w-md">
-        <span className="line-clamp-1 text-gray-800">{issue.title}</span>
+        <span className="line-clamp-1 text-gray-800 dark:text-gray-200">{issue.title}</span>
       </Td>
       <Td>
         {status ? (
@@ -467,22 +469,22 @@ function IssueRow({
       <Td>
         <div className="flex items-center gap-1.5">
           <Avatar user={issue.assignee} size="xs" />
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
             {issue.assignee?.displayName ?? 'Unassigned'}
           </span>
         </div>
       </Td>
       <Td>{issue.team ? <TeamChip team={issue.team} /> : <span className="text-gray-300">—</span>}</Td>
       <Td>
-        <span className="flex items-center gap-1 text-xs text-gray-600">
+        <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
           <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
           {PRIORITY_META[issue.priority].label}
         </span>
       </Td>
-      <Td className="text-right text-gray-600">
+      <Td className="text-right text-gray-600 dark:text-gray-400">
         {issue.storyPoints ?? <span className="text-gray-300">—</span>}
       </Td>
-      <Td className="whitespace-nowrap text-gray-600">
+      <Td className="whitespace-nowrap text-gray-600 dark:text-gray-400">
         {issue.dueDate ? formatDate(issue.dueDate) : <span className="text-gray-300">—</span>}
       </Td>
     </tr>
@@ -518,8 +520,8 @@ function SortableTh({
       <button
         onClick={() => onSort(field)}
         className={clsx(
-          'inline-flex items-center gap-1 hover:text-gray-700',
-          isActive && 'text-gray-900',
+          'inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200',
+          isActive && 'text-gray-900 dark:text-gray-100',
         )}
       >
         {label}

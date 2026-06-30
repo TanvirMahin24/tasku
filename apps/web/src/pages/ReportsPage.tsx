@@ -54,7 +54,7 @@ export default function ReportsPage() {
     return (
       <>
         <PageHeader title="Reports" />
-        <div className="p-6 text-sm text-gray-500">No report data available.</div>
+        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">No report data available.</div>
       </>
     );
   }
@@ -62,7 +62,7 @@ export default function ReportsPage() {
   return (
     <>
       <PageHeader title="Reports" subtitle="Project dashboards & charts" />
-      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-2">
           <Card title="Velocity" subtitle="Committed vs completed points per sprint">
             <VelocityChart data={reports.velocity} />
@@ -92,10 +92,10 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5">
+    <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
       <div className="mb-3">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
       </div>
       {children}
     </section>
@@ -104,7 +104,7 @@ function Card({
 
 function Empty() {
   return (
-    <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-400">
+    <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 dark:border-gray-700 text-sm text-gray-400">
       No data yet.
     </div>
   );
@@ -114,7 +114,7 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
   return (
     <div className="mt-3 flex flex-wrap gap-4">
       {items.map((it) => (
-        <span key={it.label} className="flex items-center gap-1.5 text-xs text-gray-600">
+        <span key={it.label} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
           <span
             className="h-2.5 w-2.5 rounded-sm"
             style={{ backgroundColor: it.color }}
@@ -359,7 +359,7 @@ function Axes({ max }: { max: number }) {
               y1={yy}
               x2={W - PAD.right}
               y2={yy}
-              stroke="#f1f5f9"
+              className="stroke-gray-200 dark:stroke-gray-700"
               strokeWidth={1}
             />
             <text

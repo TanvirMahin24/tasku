@@ -15,6 +15,7 @@ import ListPage from '@/pages/ListPage';
 import TimelinePage from '@/pages/TimelinePage';
 import SearchPage from '@/pages/SearchPage';
 import ReportsPage from '@/pages/ReportsPage';
+import SettingsPage from '@/pages/SettingsPage';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/projects/:key/timeline" element={<TimelinePage />} />
           <Route path="/projects/:key/backlog" element={<BacklogPage />} />
           <Route path="/projects/:key/report" element={<SprintReportPage />} />
+          <Route path="/projects/:key/settings" element={<SettingsPage />} />
           <Route path="/issues/:issueKey" element={<IssuePage />} />
         </Route>
       </Route>

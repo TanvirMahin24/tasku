@@ -131,8 +131,8 @@ export default function SearchPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Saved filters rail */}
-        <aside className="w-60 shrink-0 overflow-y-auto scrollbar-thin border-r border-gray-200 bg-white px-3 py-4">
-          <h2 className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <aside className="w-60 shrink-0 overflow-y-auto scrollbar-thin border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-4">
+          <h2 className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Saved filters
           </h2>
           {savedFilters.length === 0 ? (
@@ -146,14 +146,14 @@ export default function SearchPage() {
                     className={clsx(
                       'flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
                       activeFilterId === f.id
-                        ? 'bg-brand-50 font-medium text-brand-700'
-                        : 'text-gray-700 hover:bg-gray-50',
+                        ? 'bg-brand-50 dark:bg-brand-500/15 font-medium text-brand-700 dark:text-brand-300'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
                     )}
                   >
                     <Filter className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                     <span className="min-w-0 flex-1 truncate">{f.name}</span>
                     {f.shared && (
-                      <span className="shrink-0 rounded bg-gray-100 px-1 text-[10px] text-gray-500">
+                      <span className="shrink-0 rounded bg-gray-100 dark:bg-gray-800 px-1 text-[10px] text-gray-500 dark:text-gray-400">
                         shared
                       </span>
                     )}
@@ -162,7 +162,7 @@ export default function SearchPage() {
                     onClick={() => {
                       if (confirm(`Delete filter “${f.name}”?`)) removeFilter.mutate(f.id);
                     }}
-                    className="ml-0.5 hidden h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 group-hover:flex"
+                    className="ml-0.5 hidden h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300 group-hover:flex"
                     title="Delete filter"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -176,7 +176,7 @@ export default function SearchPage() {
         {/* Builder + results */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* Criteria builder */}
-          <div className="space-y-3 border-b border-gray-200 bg-white px-6 py-4">
+          <div className="space-y-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -287,8 +287,8 @@ export default function SearchPage() {
           </div>
 
           {/* Results */}
-          <div className="flex-1 overflow-auto scrollbar-thin bg-gray-50 p-6">
-            <div className="mb-3 flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex-1 overflow-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
+            <div className="mb-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               {isFetching ? (
                 <>
                   <Spinner className="h-4 w-4" /> Searching…
@@ -401,10 +401,10 @@ function ResultsTable({
   onOpen: (key: string) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             <th className="w-10 px-3 py-2.5">Type</th>
             <th className="px-3 py-2.5">Key</th>
             <th className="px-3 py-2.5">Summary</th>
@@ -415,26 +415,26 @@ function ResultsTable({
             <th className="px-3 py-2.5">Due date</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {issues.map((issue) => (
             <tr
               key={issue.id}
               onClick={() => onOpen(issue.key)}
-              className="cursor-pointer transition-colors hover:bg-gray-50"
+              className="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <td className="px-3 py-2.5 align-middle">
                 <IssueTypeIcon type={issue.type} />
               </td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-xs font-semibold text-gray-500">
+              <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
                 {issue.key}
               </td>
               <td className="max-w-md px-3 py-2.5 align-middle">
-                <span className="line-clamp-1 text-gray-800">{issue.title}</span>
+                <span className="line-clamp-1 text-gray-800 dark:text-gray-200">{issue.title}</span>
               </td>
               <td className="px-3 py-2.5 align-middle">
                 <div className="flex items-center gap-1.5">
                   <Avatar user={issue.assignee} size="xs" />
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
                     {issue.assignee?.displayName ?? 'Unassigned'}
                   </span>
                 </div>
@@ -447,15 +447,15 @@ function ResultsTable({
                 )}
               </td>
               <td className="px-3 py-2.5 align-middle">
-                <span className="flex items-center gap-1 text-xs text-gray-600">
+                <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                   <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
                   {PRIORITY_META[issue.priority].label}
                 </span>
               </td>
-              <td className="px-3 py-2.5 text-right align-middle text-gray-600">
+              <td className="px-3 py-2.5 text-right align-middle text-gray-600 dark:text-gray-400">
                 {issue.storyPoints ?? <span className="text-gray-300">—</span>}
               </td>
-              <td className="whitespace-nowrap px-3 py-2.5 align-middle text-gray-600">
+              <td className="whitespace-nowrap px-3 py-2.5 align-middle text-gray-600 dark:text-gray-400">
                 {issue.dueDate ? (
                   formatDate(issue.dueDate)
                 ) : (
@@ -522,7 +522,7 @@ function SaveFilterModal({
     >
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Name
           </label>
           <input
@@ -533,12 +533,12 @@ function SaveFilterModal({
             className={inputClass}
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
           <input
             type="checkbox"
             checked={shared}
             onChange={(e) => setShared(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-brand-600"
+            className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-brand-600"
           />
           Share with everyone on the workspace
         </label>

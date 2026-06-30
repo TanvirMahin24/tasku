@@ -137,22 +137,22 @@ export default function TeamPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           {errorMsg && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
               {errorMsg}
             </p>
           )}
 
           {/* Settings */}
-          <section className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Team details
             </h2>
             <div className="space-y-4">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">
+                <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                   Name
                 </span>
                 <input
@@ -167,7 +167,7 @@ export default function TeamPage() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">
+                <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                   Description
                 </span>
                 <textarea
@@ -183,7 +183,7 @@ export default function TeamPage() {
                 />
               </label>
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">
                   Color
                 </span>
                 <ColorPicker
@@ -195,12 +195,12 @@ export default function TeamPage() {
           </section>
 
           {/* Members */}
-          <section className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Members
             </h2>
 
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
               {team.members.length === 0 && (
                 <li className="py-3 text-sm text-gray-400">No members yet.</li>
               )}
@@ -212,7 +212,7 @@ export default function TeamPage() {
                   <div className="flex min-w-0 items-center gap-2.5">
                     <Avatar user={m.user} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-gray-900">
+                      <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                         {m.user.displayName}
                       </p>
                       <p className="truncate text-xs text-gray-400">
@@ -224,7 +224,7 @@ export default function TeamPage() {
                     <Badge
                       className={
                         m.role === 'LEAD'
-                          ? 'bg-indigo-100 text-indigo-700'
+                          ? 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
                           : undefined
                       }
                     >
@@ -232,7 +232,7 @@ export default function TeamPage() {
                     </Badge>
                     <button
                       onClick={() => removeMember.mutate(m.user.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600"
                       title="Remove member"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -268,16 +268,16 @@ function AddMemberRow({
 
   if (candidates.length === 0) {
     return (
-      <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-400">
+      <p className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3 text-xs text-gray-400">
         Everyone is already on this team.
       </p>
     );
   }
 
   return (
-    <div className="mt-3 flex items-end gap-2 border-t border-gray-100 pt-3">
+    <div className="mt-3 flex items-end gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
       <div className="flex-1">
-        <span className="mb-1 block text-xs font-medium text-gray-600">User</span>
+        <span className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">User</span>
         <Select
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
@@ -289,7 +289,7 @@ function AddMemberRow({
         />
       </div>
       <div className="w-36">
-        <span className="mb-1 block text-xs font-medium text-gray-600">Role</span>
+        <span className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Role</span>
         <Select
           value={role}
           onChange={(e) => setRole(e.target.value as TeamRole)}

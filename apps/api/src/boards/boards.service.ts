@@ -70,6 +70,7 @@ export class BoardsService {
         type: dto.type ?? BoardType.KANBAN,
         teamId: dto.teamId ?? null,
         filter: this.normalizeFilter(dto.filter),
+        swimlaneBy: dto.swimlaneBy ?? undefined,
         isDefault: false,
       },
     });
@@ -100,6 +101,9 @@ export class BoardsService {
     }
     if (dto.filter !== undefined) {
       data.filter = this.normalizeFilter(dto.filter) ?? Prisma.JsonNull;
+    }
+    if (dto.swimlaneBy !== undefined) {
+      data.swimlaneBy = dto.swimlaneBy;
     }
     const updated = await this.prisma.board.update({
       where: { id: board.id },

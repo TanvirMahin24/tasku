@@ -129,19 +129,19 @@ export function CommandPalette({
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-6">
       <div
-        className="fixed inset-0 bg-gray-900/40 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-gray-900/40 backdrop-blur-[1px] dark:bg-black/60"
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative z-10 mt-[10vh] w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5">
-        <div className="flex items-center gap-2.5 border-b border-gray-100 px-4">
+      <div className="relative z-10 mt-[10vh] w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10">
+        <div className="flex items-center gap-2.5 border-b border-gray-100 px-4 dark:border-gray-700">
           <SearchIcon className="h-4.5 w-4.5 text-gray-400" />
           <input
             autoFocus
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Search issues or jump to…"
-            className="w-full bg-transparent py-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            className="w-full bg-transparent py-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100"
           />
           {isFetching && <Spinner className="h-4 w-4" />}
         </div>
@@ -175,7 +175,9 @@ export function CommandPalette({
                     onClick={() => selectIndex(idx)}
                     className={clsx(
                       'flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm',
-                      active === idx ? 'bg-brand-50 text-brand-700' : 'text-gray-700',
+                      active === idx
+                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                        : 'text-gray-700 dark:text-gray-300',
                     )}
                   >
                     <Icon className="h-4 w-4 text-gray-400" />
@@ -196,7 +198,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="flex items-center gap-3 border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">
+        <div className="flex items-center gap-3 border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400 dark:border-gray-700">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd>
           <span>navigate</span>
@@ -242,12 +244,19 @@ function IssueRow({
       onClick={onClick}
       className={clsx(
         'flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm',
-        active ? 'bg-brand-50' : '',
+        active ? 'bg-brand-50 dark:bg-brand-500/15' : '',
       )}
     >
       <IssueTypeIcon type={issue.type} />
       <span className="font-mono text-[11px] text-gray-400">{issue.key}</span>
-      <span className={clsx('min-w-0 flex-1 truncate', active ? 'text-brand-800' : 'text-gray-700')}>
+      <span
+        className={clsx(
+          'min-w-0 flex-1 truncate',
+          active
+            ? 'text-brand-800 dark:text-brand-300'
+            : 'text-gray-700 dark:text-gray-300',
+        )}
+      >
         {issue.title}
       </span>
       {active && <CornerDownLeft className="h-3.5 w-3.5 text-gray-400" />}
@@ -257,7 +266,7 @@ function IssueRow({
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-sans text-[10px] text-gray-500">
+    <kbd className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-sans text-[10px] text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
       {children}
     </kbd>
   );

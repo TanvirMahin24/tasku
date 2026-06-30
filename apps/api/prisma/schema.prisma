@@ -91,6 +91,7 @@ model Status {
   name      String
   category  StatusCategory @default(TODO)
   order     Int            // column order on the board
+  wipLimit  Int?           // optional work-in-progress limit for the column
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues  Issue[]
@@ -364,15 +365,24 @@ enum BoardType {
   SCRUM
 }
 
+enum BoardSwimlane {
+  NONE
+  ASSIGNEE
+  EPIC
+  TEAM
+  PRIORITY
+}
+
 model Board {
-  id        String    @id @default(cuid())
-  projectId String
-  name      String
-  type      BoardType @default(KANBAN)
-  teamId    String?
-  filter    Json?     // { assigneeIds?, labelIds?, types?, priorities? }
-  isDefault Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  id         String        @id @default(cuid())
+  projectId  String
+  name       String
+  type       BoardType     @default(KANBAN)
+  teamId     String?
+  filter     Json?         // { assigneeIds?, labelIds?, types?, priorities? }
+  swimlaneBy BoardSwimlane @default(NONE)
+  isDefault  Boolean       @default(false)
+  createdAt  DateTime      @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   team    Team?   @relation(fields: [teamId], references: [id])

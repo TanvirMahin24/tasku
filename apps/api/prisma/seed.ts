@@ -17,6 +17,7 @@ import {
   SprintState,
   TeamRole,
   BoardType,
+  BoardSwimlane,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { LexoRank } from 'lexorank';
@@ -113,6 +114,25 @@ async function main() {
     (s) => s.category === StatusCategory.IN_PROGRESS,
   )!;
   const done = project.statuses.find((s) => s.category === StatusCategory.DONE)!;
+
+  // Wave 2: a WIP limit on the In Progress column.
+  await prisma.status.update({
+    where: { id: inProgress.id },
+    data: { wipLimit: 3 },
+  });
+
+  // Wave 2: a couple of components (only if the project has none yet).
+  const componentCount = await prisma.component.count({
+    where: { projectId: project.id },
+  });
+  if (componentCount === 0) {
+    await prisma.component.createMany({
+      data: [
+        { projectId: project.id, name: 'Frontend' },
+        { projectId: project.id, name: 'Backend' },
+      ],
+    });
+  }
 
   const labelByName = new Map(project.labels.map((l) => [l.name, l.id]));
 
@@ -586,6 +606,7 @@ async function main() {
         name: 'Platform Board',
         type: BoardType.KANBAN,
         teamId: platformTeam.id,
+        swimlaneBy: BoardSwimlane.ASSIGNEE,
         isDefault: false,
       },
     });

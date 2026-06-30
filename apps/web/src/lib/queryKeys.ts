@@ -10,6 +10,7 @@ export const qk = {
   project: (key: string) => ['project', key] as const,
   statuses: (key: string) => ['project', key, 'statuses'] as const,
   labels: (key: string) => ['project', key, 'labels'] as const,
+  components: (key: string) => ['project', key, 'components'] as const,
   members: (key: string) => ['project', key, 'members'] as const,
 
   board: (key: string, sprintId?: string) =>

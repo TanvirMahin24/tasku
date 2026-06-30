@@ -20,6 +20,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           'block w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900',
           'focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500',
           'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400',
+          'dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-800/50',
           className,
         )}
         {...props}
@@ -38,4 +39,4 @@ Select.displayName = 'Select';
 
 // Shared input/textarea styling so forms look consistent.
 export const inputClass =
-  'block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500';

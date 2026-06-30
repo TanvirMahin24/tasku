@@ -7,12 +7,15 @@ import type {
   BoardSummaryDto,
   BulkUpdateDto,
   CommentDto,
+  ComponentDto,
   CreateBoardDto,
   CreateCommentDto,
+  CreateComponentDto,
   CreateIssueDto,
   CreateLinkDto,
   CreateProjectDto,
   CreateSprintDto,
+  CreateStatusDto,
   CreateSubtaskDto,
   CreateTeamDto,
   CreateWorklogDto,
@@ -38,7 +41,10 @@ import type {
   TeamDto,
   TimelineDto,
   UpdateBoardDto,
+  UpdateComponentDto,
   UpdateIssueDto,
+  UpdateMemberRoleDto,
+  UpdateStatusDto,
   UpdateTeamDto,
   UserDto,
   WorklogDto,
@@ -151,6 +157,18 @@ export const projectsApi = {
     api
       .post<ProjectMemberDto>(`/projects/${key}/members`, dto)
       .then((r) => r.data),
+  updateMemberRole: (key: string, userId: string, dto: UpdateMemberRoleDto) =>
+    api
+      .patch<ProjectMemberDto>(`/projects/${key}/members/${userId}`, dto)
+      .then((r) => r.data),
+  removeMember: (key: string, userId: string) =>
+    api.delete<void>(`/projects/${key}/members/${userId}`).then((r) => r.data),
+  components: (key: string) =>
+    api.get<ComponentDto[]>(`/projects/${key}/components`).then((r) => r.data),
+  createComponent: (key: string, dto: CreateComponentDto) =>
+    api
+      .post<ComponentDto>(`/projects/${key}/components`, dto)
+      .then((r) => r.data),
   board: (key: string, sprintId?: string) =>
     api
       .get<BoardDto>(`/projects/${key}/board`, {
@@ -167,6 +185,36 @@ export const projectsApi = {
     api
       .post<{ updated: number }>(`/projects/${key}/issues/bulk`, dto)
       .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Statuses (workflow) — project-scoped create/reorder + id-scoped patch/delete
+// ---------------------------------------------------------------------------
+
+export const statusesApi = {
+  create: (key: string, dto: CreateStatusDto) =>
+    api
+      .post<StatusDto>(`/projects/${key}/statuses`, dto)
+      .then((r) => r.data),
+  update: (id: string, dto: UpdateStatusDto) =>
+    api.patch<StatusDto>(`/statuses/${id}`, dto).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/statuses/${id}`).then((r) => r.data),
+  reorder: (key: string, statusIds: string[]) =>
+    api
+      .post<StatusDto[]>(`/projects/${key}/statuses/reorder`, { statusIds })
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+
+export const componentsApi = {
+  update: (id: string, dto: UpdateComponentDto) =>
+    api.patch<ComponentDto>(`/components/${id}`, dto).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/components/${id}`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

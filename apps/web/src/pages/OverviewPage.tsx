@@ -65,23 +65,23 @@ export default function OverviewPage() {
         subtitle="Project overview"
       />
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 p-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
         <div className="mx-auto max-w-5xl space-y-6">
           {/* Stat cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard label="Total issues" value={overview.totalIssues} />
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Story points
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {overview.points.done}
                 <span className="text-base font-medium text-gray-400">
                   {' '}
                   / {overview.points.total}
                 </span>
               </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 <div
                   className="h-full rounded-full bg-brand-500"
                   style={{ width: `${pointsPct}%` }}
@@ -89,16 +89,16 @@ export default function OverviewPage() {
               </div>
               <p className="mt-1 text-xs text-gray-400">{pointsPct}% complete</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                 Active sprint
               </p>
               {overview.activeSprint ? (
                 <>
-                  <p className="mt-1 truncate text-lg font-semibold text-gray-900">
+                  <p className="mt-1 truncate text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {overview.activeSprint.name}
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     {overview.activeSprint.startDate
                       ? `${formatDate(overview.activeSprint.startDate)} – ${formatDate(overview.activeSprint.endDate)}`
                       : 'No dates set'}
@@ -139,11 +139,11 @@ export default function OverviewPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }
@@ -156,8 +156,8 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5">
-      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+    <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {title}
       </h2>
       {children}
@@ -172,7 +172,7 @@ function StatusSegmentBar({ buckets }: { buckets: CountBucket[] }) {
   }
   return (
     <div className="space-y-3">
-      <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+      <div className="flex h-3 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
         {buckets.map((b) => (
           <div
             key={b.key}
@@ -191,11 +191,11 @@ function StatusSegmentBar({ buckets }: { buckets: CountBucket[] }) {
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: CATEGORY_BAR[b.key] ?? '#94a3b8' }}
             />
-            <span className="text-gray-600">
+            <span className="text-gray-600 dark:text-gray-400">
               {STATUS_CATEGORY_META[b.key as keyof typeof STATUS_CATEGORY_META]
                 ?.label ?? b.label}
             </span>
-            <span className="font-semibold text-gray-900">{b.count}</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-100">{b.count}</span>
           </div>
         ))}
       </div>
@@ -212,16 +212,16 @@ function BarList({ buckets }: { buckets: CountBucket[] }) {
     <div className="space-y-2.5">
       {buckets.map((b) => (
         <div key={b.key} className="flex items-center gap-3">
-          <span className="w-24 shrink-0 truncate text-sm text-gray-600">
+          <span className="w-24 shrink-0 truncate text-sm text-gray-600 dark:text-gray-400">
             {b.label}
           </span>
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
             <div
               className="h-full rounded-full bg-brand-500"
               style={{ width: `${(b.count / max) * 100}%` }}
             />
           </div>
-          <span className="w-8 shrink-0 text-right text-sm font-semibold text-gray-900">
+          <span className="w-8 shrink-0 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
             {b.count}
           </span>
         </div>
@@ -242,12 +242,12 @@ function Workload({ entries }: { entries: WorkloadEntryDto[] }) {
           <Avatar user={e.user} size="sm" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between text-sm">
-              <span className="truncate text-gray-700">{e.user.displayName}</span>
-              <span className="shrink-0 text-xs text-gray-500">
+              <span className="truncate text-gray-700 dark:text-gray-200">{e.user.displayName}</span>
+              <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
                 {e.count} {e.count === 1 ? 'issue' : 'issues'} · {e.points} pts
               </span>
             </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
               <div
                 className="h-full rounded-full"
                 style={{
@@ -276,8 +276,8 @@ function ActivityFeed({ activities }: { activities: ActivityDto[] }) {
       {sorted.map((a) => (
         <li key={a.id} className="flex items-start gap-2.5 text-sm">
           <Avatar user={a.actor} size="xs" className="mt-0.5" />
-          <p className="text-gray-600">
-            <span className="font-medium text-gray-900">
+          <p className="text-gray-600 dark:text-gray-400">
+            <span className="font-medium text-gray-900 dark:text-gray-100">
               {a.actor.displayName}
             </span>{' '}
             <ActivityText activity={a} />{' '}
@@ -298,8 +298,8 @@ function ActivityText({ activity }: { activity: ActivityDto }) {
     return (
       <>
         changed <span className="font-medium">{f}</span> from{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{oldValue}</code> to{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{newValue}</code>
+        <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 text-xs">{oldValue}</code> to{' '}
+        <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 text-xs">{newValue}</code>
       </>
     );
   }
@@ -307,7 +307,7 @@ function ActivityText({ activity }: { activity: ActivityDto }) {
     return (
       <>
         set <span className="font-medium">{f}</span> to{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{newValue}</code>
+        <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 text-xs">{newValue}</code>
       </>
     );
   }
