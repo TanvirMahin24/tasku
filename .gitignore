@@ -13,3 +13,5 @@ apps/web/dist/
 *.tsbuildinfo
 # local Prisma engine binaries (fetched out-of-band when the registry CDN is blocked)
 .prisma-engines/
+# uploaded attachments (local disk storage)
+apps/api/uploads/

@@ -1,18 +1,24 @@
 import axios, { type AxiosInstance } from 'axios';
 import type {
   AddTeamMemberDto,
+  AttachmentDto,
   AuthResponse,
   BoardDto,
   BoardSummaryDto,
+  BulkUpdateDto,
   CommentDto,
   CreateBoardDto,
   CreateCommentDto,
   CreateIssueDto,
+  CreateLinkDto,
   CreateProjectDto,
   CreateSprintDto,
   CreateSubtaskDto,
   CreateTeamDto,
+  CreateWorklogDto,
   IssueDetailDto,
+  IssueFilterCriteria,
+  IssueLinkDto,
   IssueListQuery,
   IssueSummaryDto,
   LabelDto,
@@ -22,7 +28,11 @@ import type {
   OverviewDto,
   ProjectDto,
   RegisterDto,
+  ReportsDto,
   Role,
+  SaveFilterDto,
+  SavedFilterDto,
+  SearchResultDto,
   SprintDto,
   StatusDto,
   TeamDto,
@@ -31,6 +41,7 @@ import type {
   UpdateIssueDto,
   UpdateTeamDto,
   UserDto,
+  WorklogDto,
 } from '@tasku/types';
 
 const API_URL =
@@ -150,6 +161,12 @@ export const projectsApi = {
     api.get<TimelineDto>(`/projects/${key}/timeline`).then((r) => r.data),
   overview: (key: string) =>
     api.get<OverviewDto>(`/projects/${key}/overview`).then((r) => r.data),
+  reports: (key: string) =>
+    api.get<ReportsDto>(`/projects/${key}/reports`).then((r) => r.data),
+  bulkUpdate: (key: string, dto: BulkUpdateDto) =>
+    api
+      .post<{ updated: number }>(`/projects/${key}/issues/bulk`, dto)
+      .then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------
@@ -221,6 +238,108 @@ export const issuesApi = {
     api
       .post<IssueDetailDto>(`/issues/${issueKey}/subtasks`, dto)
       .then((r) => r.data),
+
+  // --- Links ---
+  addLink: (issueKey: string, dto: CreateLinkDto) =>
+    api
+      .post<IssueLinkDto>(`/issues/${issueKey}/links`, dto)
+      .then((r) => r.data),
+  removeLink: (linkId: string) =>
+    api.delete<void>(`/links/${linkId}`).then((r) => r.data),
+
+  // --- Attachments ---
+  uploadAttachment: (issueKey: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    // Let the browser set the multipart boundary; clear the JSON default.
+    return api
+      .post<AttachmentDto>(`/issues/${issueKey}/attachments`, form, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data);
+  },
+  deleteAttachment: (attachmentId: string) =>
+    api.delete<void>(`/attachments/${attachmentId}`).then((r) => r.data),
+
+  // --- Watchers ---
+  watch: (issueKey: string) =>
+    api.post<void>(`/issues/${issueKey}/watch`).then((r) => r.data),
+  unwatch: (issueKey: string) =>
+    api.delete<void>(`/issues/${issueKey}/watch`).then((r) => r.data),
+
+  // --- Worklogs ---
+  addWorklog: (issueKey: string, dto: CreateWorklogDto) =>
+    api
+      .post<WorklogDto>(`/issues/${issueKey}/worklogs`, dto)
+      .then((r) => r.data),
+  deleteWorklog: (worklogId: string) =>
+    api.delete<void>(`/worklogs/${worklogId}`).then((r) => r.data),
+};
+
+/**
+ * Fetch an attachment's raw bytes (with auth) and wrap them in an object URL,
+ * suitable for <img src> previews and download links (which can't carry the
+ * Bearer header themselves). Callers should URL.revokeObjectURL when done.
+ */
+export async function fetchAttachmentBlobUrl(
+  attachmentId: string,
+): Promise<string> {
+  const res = await api.get<Blob>(`/attachments/${attachmentId}/raw`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(res.data);
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/** Serialize filter criteria to query params (arrays as repeated keys). */
+function criteriaToParams(c: IssueFilterCriteria): URLSearchParams {
+  const params = new URLSearchParams();
+  if (c.text) params.set('text', c.text);
+  if (c.projectKey) params.set('projectKey', c.projectKey);
+  const arr: (keyof IssueFilterCriteria)[] = [
+    'statusCategories',
+    'assigneeIds',
+    'reporterIds',
+    'types',
+    'priorities',
+    'teamIds',
+    'labelIds',
+  ];
+  for (const k of arr) {
+    const v = c[k] as string[] | undefined;
+    if (v && v.length) v.forEach((item) => params.append(k, item));
+  }
+  return params;
+}
+
+export const searchApi = {
+  issues: (criteria: IssueFilterCriteria) =>
+    api
+      .get<SearchResultDto>('/search/issues', {
+        params: criteriaToParams(criteria),
+      })
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Saved filters
+// ---------------------------------------------------------------------------
+
+export const filtersApi = {
+  list: () => api.get<SavedFilterDto[]>('/filters').then((r) => r.data),
+  create: (dto: SaveFilterDto) =>
+    api.post<SavedFilterDto>('/filters', dto).then((r) => r.data),
+  get: (id: string) =>
+    api.get<SavedFilterDto>(`/filters/${id}`).then((r) => r.data),
+  update: (id: string, dto: Partial<SaveFilterDto>) =>
+    api.patch<SavedFilterDto>(`/filters/${id}`, dto).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/filters/${id}`).then((r) => r.data),
+  results: (id: string) =>
+    api.get<SearchResultDto>(`/filters/${id}/results`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

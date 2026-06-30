@@ -31,6 +31,9 @@ model User {
   notifications Notification[]   @relation("Recipient")
   ledProjects   Project[]        @relation("ProjectLead")
   teamMemberships TeamMember[]
+  watching      Watcher[]
+  worklogs      Worklog[]
+  savedFilters  SavedFilter[]
 }
 
 enum Role {
@@ -131,6 +134,7 @@ model Issue {
   sprintId    String?
   teamId      String?
   storyPoints Int?
+  originalEstimate Int? // minutes; logged time = sum of worklogs
   startDate   DateTime? // timeline / roadmap
   dueDate     DateTime? // timeline / roadmap
   rank        String    // lexorank for board ordering
@@ -152,6 +156,8 @@ model Issue {
   activities  ActivityLog[]
   outLinks    IssueLink[]   @relation("LinkSource")
   inLinks     IssueLink[]   @relation("LinkTarget")
+  watchers    Watcher[]
+  worklogs    Worklog[]
 
   @@index([projectId])
   @@index([statusId])
@@ -372,4 +378,48 @@ model Board {
   team    Team?   @relation(fields: [teamId], references: [id])
 
   @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Watchers, worklogs (time tracking), saved filters
+// ---------------------------------------------------------------------------
+
+model Watcher {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, userId])
+}
+
+model Worklog {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  minutes   Int
+  comment   String?
+  startedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+}
+
+model SavedFilter {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  criteria  Json // { text?, projectKey?, statusIds?, assigneeIds?, types?, priorities?, teamIds?, labelIds? }
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }

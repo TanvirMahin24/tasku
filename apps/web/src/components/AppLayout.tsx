@@ -17,6 +17,7 @@ import {
   LogOut,
   Plus,
   Rows3,
+  Search,
   Users,
   BarChart3,
 } from 'lucide-react';
@@ -26,12 +27,14 @@ import { qk } from '@/lib/queryKeys';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { NotificationsBell } from '@/components/NotificationsBell';
+import { CommandPalette } from '@/components/CommandPalette';
 
 export function AppLayout() {
   const { key } = useParams<{ key: string }>();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const { data: projects = [] } = useQuery({
     queryKey: qk.projects,
@@ -39,6 +42,18 @@ export function AppLayout() {
   });
 
   const activeProject = projects.find((p) => p.key === key) ?? null;
+
+  // Global ⌘K / Ctrl-K to toggle the command palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -63,6 +78,16 @@ export function AppLayout() {
         </div>
 
         <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <Search className="h-4 w-4" />
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+              ⌘K
+            </kbd>
+          </button>
           <SidebarLink to="/" icon={ListTodo} end>
             Projects
           </SidebarLink>
@@ -105,6 +130,12 @@ export function AppLayout() {
               >
                 Sprint report
               </SidebarLink>
+              <SidebarLink
+                to={`/projects/${activeProject.key}/reports`}
+                icon={BarChart3}
+              >
+                Reports
+              </SidebarLink>
             </>
           )}
         </nav>
@@ -137,6 +168,12 @@ export function AppLayout() {
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Outlet />
       </main>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        projectKey={key}
+      />
     </div>
   );
 }

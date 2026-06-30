@@ -35,6 +35,15 @@ fully-typed React + NestJS app you can run yourself.
 - **Overview dashboard** — totals, story-point progress, status/type/priority breakdowns, per-assignee workload, and a recent-activity feed
 - **Sub-task / parent / child** — create subtasks from an issue; parent & child links in the issue drawer
 
+**Power features**
+- **Search & saved filters** — cross-project issue search, a criteria builder, reusable saved filters, and a ⌘K command palette
+- **Issue links / dependencies** — blocks / is-blocked-by / relates-to / duplicates, shown in the issue drawer
+- **Attachments** — file uploads on issues (image thumbnails, download, delete)
+- **Watchers** — watch/unwatch issues; watchers get notified on comments & changes
+- **Time tracking** — original estimate, logged-time worklogs, and a progress bar
+- **Bulk edit** — multi-select issues on the List view and change status/assignee/priority/team/sprint/labels at once
+- **Reports** — velocity, burndown, cumulative-flow, and created-vs-resolved charts
+
 ## Tech stack
 
 | Layer    | Tech |
@@ -108,6 +117,24 @@ active), and a handful of issues across types and columns.
 | `npm run db:seed` | Seed demo data |
 | `npm run db:generate` | Regenerate the Prisma client |
 
+## Troubleshooting
+
+- **`Cannot find module .../apps/api/dist/main`** when running `dev`: a stale or
+  partial build. Clean and rebuild:
+  ```bash
+  rm -rf apps/api/dist apps/api/*.tsbuildinfo
+  npm run build -w @tasku/api
+  ```
+  If `--watch` still races on a cold start, run the API and web in two terminals
+  (`pnpm --filter @tasku/api start` after a build, and `pnpm --filter @tasku/web dev`).
+- **Using `pnpm`?** pnpm doesn't run dependencies' build scripts by default, so
+  Prisma's engine/client won't be generated and the API won't start. This repo
+  allow-lists them via `pnpm.onlyBuiltDependencies`; if you still see a Prisma
+  "did you forget to run generate" error, run `pnpm --filter @tasku/api exec prisma generate`.
+  (An `apps/api` `postinstall` also runs `prisma generate` automatically.)
+- **Recommended Node:** 20 or 22 LTS. Very new majors can trip nest's watch mode.
+- **Reset the database** (drops + re-migrates + re-seeds): `npm run db:reset -w @tasku/api`.
+
 ## API at a glance
 
 REST under `/api/v1` (JWT in `Authorization: Bearer …`), plus a WebSocket
@@ -124,6 +151,11 @@ GET/POST /projects/:key/boards            GET/PATCH/DELETE /boards/:id   GET /bo
 GET/POST /teams                           GET/PATCH/DELETE /teams/:id    POST/DELETE /teams/:id/members
 POST /projects/:key/sprints               POST /sprints/:id/start | /complete
 GET /notifications                        POST /notifications/:id/read | /read-all
+GET /search/issues                        GET/POST /filters   GET/PATCH/DELETE /filters/:id   GET /filters/:id/results
+POST /issues/:key/links                   DELETE /links/:id
+POST/DELETE /issues/:key/watch            POST /issues/:key/worklogs   DELETE /worklogs/:id
+POST /issues/:key/attachments             GET /attachments/:id/raw     DELETE /attachments/:id
+POST /projects/:key/issues/bulk           GET /projects/:key/reports
 ```
 
 ## Roadmap (next)

@@ -75,4 +75,9 @@ export class UpdateIssueDto implements IUpdateIssueDto {
   @ValidateIf((o) => o.dueDate !== null)
   @IsISO8601()
   dueDate?: string | null;
+
+  @IsOptional()
+  @ValidateIf((o) => o.originalEstimate !== null)
+  @IsInt()
+  originalEstimate?: number | null;
 }

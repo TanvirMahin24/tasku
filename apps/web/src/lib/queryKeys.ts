@@ -1,3 +1,4 @@
+import type { IssueFilterCriteria } from '@tasku/types';
 import type { IssueFilters } from './api';
 
 // Centralized React Query keys so invalidation stays consistent across the app.
@@ -18,6 +19,7 @@ export const qk = {
 
   timeline: (key: string) => ['project', key, 'timeline'] as const,
   overview: (key: string) => ['project', key, 'overview'] as const,
+  reports: (key: string) => ['project', key, 'reports'] as const,
 
   issues: (key: string, filters?: IssueFilters) =>
     ['project', key, 'issues', filters ?? {}] as const,
@@ -30,4 +32,10 @@ export const qk = {
   team: (id: string) => ['team', id] as const,
 
   notifications: ['notifications'] as const,
+
+  search: (criteria: IssueFilterCriteria) =>
+    ['search', 'issues', criteria] as const,
+  filters: ['filters'] as const,
+  filter: (id: string) => ['filter', id] as const,
+  filterResults: (id: string) => ['filter', id, 'results'] as const,
 };

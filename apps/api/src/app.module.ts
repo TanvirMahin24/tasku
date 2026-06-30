@@ -16,6 +16,12 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { TeamsModule } from './teams/teams.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { OverviewModule } from './overview/overview.module';
+import { SearchModule } from './search/search.module';
+import { LinksModule } from './links/links.module';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { WatchersModule } from './watchers/watchers.module';
+import { WorklogsModule } from './worklogs/worklogs.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -36,6 +42,12 @@ import { OverviewModule } from './overview/overview.module';
     TeamsModule,
     TimelineModule,
     OverviewModule,
+    SearchModule,
+    LinksModule,
+    AttachmentsModule,
+    WatchersModule,
+    WorklogsModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

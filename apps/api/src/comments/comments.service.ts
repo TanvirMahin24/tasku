@@ -58,13 +58,20 @@ export class CommentsService {
         },
       });
 
-      // COMMENTED -> reporter + assignee (de-duped, excluding the author).
+      // COMMENTED -> reporter + assignee + watchers (de-duped, excl. author).
       const commentedRecipients = new Set<string>();
       if (issue.reporterId && issue.reporterId !== userId) {
         commentedRecipients.add(issue.reporterId);
       }
       if (issue.assigneeId && issue.assigneeId !== userId) {
         commentedRecipients.add(issue.assigneeId);
+      }
+      const watchers = await tx.watcher.findMany({
+        where: { issueId: issue.id },
+        select: { userId: true },
+      });
+      for (const w of watchers) {
+        if (w.userId !== userId) commentedRecipients.add(w.userId);
       }
 
       const notifications: Prisma.NotificationCreateManyInput[] = [];

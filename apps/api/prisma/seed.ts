@@ -386,6 +386,102 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------------
+  // Wave 1: links, worklogs, estimates, watchers, saved filters
+  // (only runs on a fresh project create; guarded by upserts/skip checks)
+  // ---------------------------------------------------------------------------
+  const task1 = await prisma.issue.findUnique({ where: { key: 'TASK-1' } });
+  const task2 = await prisma.issue.findUnique({ where: { key: 'TASK-2' } });
+
+  if (task1 && task2) {
+    // TASK-2 BLOCKS TASK-1.
+    const existingLink = await prisma.issueLink.findUnique({
+      where: {
+        sourceId_targetId_type: {
+          sourceId: task2.id,
+          targetId: task1.id,
+          type: 'BLOCKS',
+        },
+      },
+    });
+    if (!existingLink) {
+      await prisma.issueLink.create({
+        data: { sourceId: task2.id, targetId: task1.id, type: 'BLOCKS' },
+      });
+      await prisma.activityLog.create({
+        data: {
+          issueId: task2.id,
+          actorId: alice.id,
+          field: 'link',
+          newValue: `BLOCKS ${task1.key}`,
+        },
+      });
+    }
+
+    // Original estimates (minutes).
+    await prisma.issue.update({
+      where: { id: task1.id },
+      data: { originalEstimate: 480 },
+    });
+    await prisma.issue.update({
+      where: { id: task2.id },
+      data: { originalEstimate: 240 },
+    });
+
+    // Worklogs on TASK-1: Alice 90m, Bob 120m.
+    const existingWorklogs = await prisma.worklog.count({
+      where: { issueId: task1.id },
+    });
+    if (existingWorklogs === 0) {
+      await prisma.worklog.create({
+        data: {
+          issueId: task1.id,
+          userId: alice.id,
+          minutes: 90,
+          comment: 'Initial board layout.',
+        },
+      });
+      await prisma.worklog.create({
+        data: {
+          issueId: task1.id,
+          userId: bob.id,
+          minutes: 120,
+          comment: 'Drag-and-drop wiring.',
+        },
+      });
+    }
+
+    // Watchers: Alice + Bob watch TASK-1.
+    await prisma.watcher.upsert({
+      where: { issueId_userId: { issueId: task1.id, userId: alice.id } },
+      update: {},
+      create: { issueId: task1.id, userId: alice.id },
+    });
+    await prisma.watcher.upsert({
+      where: { issueId_userId: { issueId: task1.id, userId: bob.id } },
+      update: {},
+      create: { issueId: task1.id, userId: bob.id },
+    });
+  }
+
+  // One shared saved filter owned by Alice.
+  const existingFilter = await prisma.savedFilter.findFirst({
+    where: { ownerId: alice.id, name: 'My open bugs' },
+  });
+  if (!existingFilter) {
+    await prisma.savedFilter.create({
+      data: {
+        ownerId: alice.id,
+        name: 'My open bugs',
+        shared: true,
+        criteria: {
+          types: ['BUG'],
+          statusCategories: ['TODO', 'IN_PROGRESS'],
+        },
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Teams (idempotent: name is unique)
   // ---------------------------------------------------------------------------
   const platformTeam = await prisma.team.upsert({

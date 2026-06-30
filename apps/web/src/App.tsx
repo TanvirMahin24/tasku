@@ -13,6 +13,8 @@ import TeamPage from '@/pages/TeamPage';
 import OverviewPage from '@/pages/OverviewPage';
 import ListPage from '@/pages/ListPage';
 import TimelinePage from '@/pages/TimelinePage';
+import SearchPage from '@/pages/SearchPage';
+import ReportsPage from '@/pages/ReportsPage';
 
 export default function App() {
   return (
@@ -25,9 +27,11 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<ProjectsPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:id" element={<TeamPage />} />
           <Route path="/projects/:key/overview" element={<OverviewPage />} />
+          <Route path="/projects/:key/reports" element={<ReportsPage />} />
           <Route path="/projects/:key/board" element={<BoardPage />} />
           <Route
             path="/projects/:key/boards/:boardId"

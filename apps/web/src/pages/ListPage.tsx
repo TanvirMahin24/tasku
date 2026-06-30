@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Rows3, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, Rows3, Search, X } from 'lucide-react';
 import clsx from 'clsx';
 import {
   ISSUE_TYPES,
+  PRIORITIES,
+  type BulkUpdateDto,
   type IssueListQuery,
   type IssueSummaryDto,
   type IssueType,
+  type Priority,
   type StatusDto,
 } from '@tasku/types';
-import { issuesApi, teamsApi } from '@/lib/api';
+import { apiErrorMessage, issuesApi, projectsApi, teamsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
@@ -21,6 +24,8 @@ import {
 import { useProjectMeta } from '@/hooks/useProjectMeta';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { LabelPicker } from '@/components/ui/LabelPicker';
 import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
@@ -33,7 +38,7 @@ type SortField = NonNullable<IssueListQuery['orderBy']>;
 export default function ListPage() {
   const { key = '' } = useParams<{ key: string }>();
   useProjectSocket(key);
-  const { statuses, users } = useProjectMeta(key);
+  const { statuses, users, labels, sprints } = useProjectMeta(key);
 
   const { data: teams = [] } = useQuery({
     queryKey: qk.teams,
@@ -48,6 +53,7 @@ export default function ListPage() {
   const [orderBy, setOrderBy] = useState<SortField>('rank');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [openIssueKey, setOpenIssueKey] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filters: IssueListQuery = useMemo(
     () => ({
@@ -68,11 +74,43 @@ export default function ListPage() {
     enabled: !!key,
   });
 
+  const queryClient = useQueryClient();
+
   const statusById = useMemo(() => {
     const m = new Map<string, StatusDto>();
     statuses.forEach((s) => m.set(s.id, s));
     return m;
   }, [statuses]);
+
+  // --- Selection ---
+  const allKeys = useMemo(() => (issues ?? []).map((i) => i.key), [issues]);
+  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
+
+  function toggleOne(issueKey: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(issueKey)) next.delete(issueKey);
+      else next.add(issueKey);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(allKeys));
+  }
+
+  const bulk = useMutation({
+    mutationFn: (dto: BulkUpdateDto) => projectsApi.bulkUpdate(key, dto),
+    onSuccess: () => {
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ['project', key, 'issues'] });
+      queryClient.invalidateQueries({ queryKey: ['project', key, 'board'] });
+    },
+  });
+
+  function applyBulk(changes: BulkUpdateDto['changes']) {
+    bulk.mutate({ issueKeys: [...selected], changes });
+  }
 
   function toggleSort(field: SortField) {
     if (orderBy === field) {
@@ -145,6 +183,15 @@ export default function ListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <Th className="w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      title="Select all (filtered)"
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600"
+                    />
+                  </Th>
                   <Th className="w-10">Type</Th>
                   <SortableTh
                     label="Key"
@@ -180,6 +227,8 @@ export default function ListPage() {
                     key={issue.id}
                     issue={issue}
                     status={statusById.get(issue.statusId)}
+                    selected={selected.has(issue.key)}
+                    onToggle={() => toggleOne(issue.key)}
                     onClick={() => setOpenIssueKey(issue.key)}
                   />
                 ))}
@@ -188,6 +237,21 @@ export default function ListPage() {
           </div>
         )}
       </div>
+
+      {selected.size > 0 && (
+        <BulkBar
+          count={selected.size}
+          statuses={statuses}
+          users={users}
+          teams={teams}
+          sprints={sprints}
+          labels={labels}
+          pending={bulk.isPending}
+          error={bulk.error ? apiErrorMessage(bulk.error, 'Bulk update failed') : null}
+          onApply={applyBulk}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
 
       <IssueDrawer
         projectKey={key}
@@ -200,20 +264,182 @@ export default function ListPage() {
   );
 }
 
+function BulkBar({
+  count,
+  statuses,
+  users,
+  teams,
+  sprints,
+  labels,
+  pending,
+  error,
+  onApply,
+  onClear,
+}: {
+  count: number;
+  statuses: StatusDto[];
+  users: { id: string; displayName: string }[];
+  teams: { id: string; name: string }[];
+  sprints: { id: string; name: string }[];
+  labels: import('@tasku/types').LabelDto[];
+  pending: boolean;
+  error: string | null;
+  onApply: (changes: BulkUpdateDto['changes']) => void;
+  onClear: () => void;
+}) {
+  const [addLabelIds, setAddLabelIds] = useState<string[]>([]);
+  const [removeLabelIds, setRemoveLabelIds] = useState<string[]>([]);
+
+  return (
+    <div className="sticky bottom-0 z-20 border-t border-gray-200 bg-white px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
+          {count} selected
+        </span>
+
+        <Select
+          value=""
+          onChange={(e) => e.target.value && onApply({ statusId: e.target.value })}
+          placeholder="Set status…"
+          className="h-9 w-auto"
+          options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+        />
+        <Select
+          value=""
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!v) return;
+            onApply({ assigneeId: v === '__unassign__' ? null : v });
+          }}
+          placeholder="Set assignee…"
+          className="h-9 w-auto"
+          options={[
+            { value: '__unassign__', label: 'Unassign' },
+            ...users.map((u) => ({ value: u.id, label: u.displayName })),
+          ]}
+        />
+        <Select
+          value=""
+          onChange={(e) =>
+            e.target.value && onApply({ priority: e.target.value as Priority })
+          }
+          placeholder="Set priority…"
+          className="h-9 w-auto"
+          options={PRIORITIES.map((p) => ({
+            value: p,
+            label: PRIORITY_META[p].label,
+          }))}
+        />
+        <Select
+          value=""
+          onChange={(e) =>
+            onApply({ teamId: e.target.value === '__none__' ? null : e.target.value })
+          }
+          placeholder="Set team…"
+          className="h-9 w-auto"
+          options={[
+            { value: '__none__', label: 'No team' },
+            ...teams.map((t) => ({ value: t.id, label: t.name })),
+          ]}
+        />
+        <Select
+          value=""
+          onChange={(e) =>
+            onApply({ sprintId: e.target.value === '__none__' ? null : e.target.value })
+          }
+          placeholder="Set sprint…"
+          className="h-9 w-auto"
+          options={[
+            { value: '__none__', label: 'Backlog' },
+            ...sprints.map((s) => ({ value: s.id, label: s.name })),
+          ]}
+        />
+
+        <div className="flex items-center gap-1.5">
+          <div className="w-44">
+            <LabelPicker
+              labels={labels}
+              selectedIds={addLabelIds}
+              onChange={setAddLabelIds}
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={addLabelIds.length === 0}
+            onClick={() => {
+              onApply({ addLabelIds });
+              setAddLabelIds([]);
+            }}
+          >
+            Add labels
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <div className="w-44">
+            <LabelPicker
+              labels={labels}
+              selectedIds={removeLabelIds}
+              onChange={setRemoveLabelIds}
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={removeLabelIds.length === 0}
+            onClick={() => {
+              onApply({ removeLabelIds });
+              setRemoveLabelIds([]);
+            }}
+          >
+            Remove labels
+          </Button>
+        </div>
+
+        {pending && <span className="text-xs text-gray-400">Applying…</span>}
+
+        <button
+          onClick={onClear}
+          className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-4 w-4" /> Clear
+        </button>
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 function IssueRow({
   issue,
   status,
+  selected,
+  onToggle,
   onClick,
 }: {
   issue: IssueSummaryDto;
   status?: StatusDto;
+  selected: boolean;
+  onToggle: () => void;
   onClick: () => void;
 }) {
   return (
     <tr
       onClick={onClick}
-      className="cursor-pointer transition-colors hover:bg-gray-50"
+      className={clsx(
+        'cursor-pointer transition-colors',
+        selected ? 'bg-brand-50/60 hover:bg-brand-50' : 'hover:bg-gray-50',
+      )}
     >
+      <Td onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          className="h-4 w-4 rounded border-gray-300 text-brand-600"
+        />
+      </Td>
       <Td>
         <IssueTypeIcon type={issue.type} />
       </Td>
@@ -311,9 +537,15 @@ function SortableTh({
 function Td({
   children,
   className,
+  onClick,
 }: {
   children: React.ReactNode;
   className?: string;
+  onClick?: (e: React.MouseEvent<HTMLTableCellElement>) => void;
 }) {
-  return <td className={clsx('px-3 py-2.5 align-middle', className)}>{children}</td>;
+  return (
+    <td onClick={onClick} className={clsx('px-3 py-2.5 align-middle', className)}>
+      {children}
+    </td>
+  );
 }

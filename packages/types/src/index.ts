@@ -115,6 +115,31 @@ export interface ActivityDto {
   createdAt: string;
 }
 
+export interface AttachmentDto {
+  id: string;
+  filename: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+}
+
+export interface IssueLinkDto {
+  id: string;
+  type: LinkType;
+  direction: 'outward' | 'inward';
+  issue: IssueSummaryDto; // the issue on the other end
+}
+
+export interface WorklogDto {
+  id: string;
+  user: UserDto;
+  minutes: number;
+  comment: string | null;
+  startedAt: string;
+  createdAt: string;
+}
+
 export interface IssueDetailDto extends IssueSummaryDto {
   description: string | null;
   reporter: UserDto;
@@ -123,6 +148,13 @@ export interface IssueDetailDto extends IssueSummaryDto {
   activities: ActivityDto[];
   children: IssueSummaryDto[];
   parent: IssueSummaryDto | null;
+  attachments: AttachmentDto[];
+  links: IssueLinkDto[];
+  watchers: UserDto[];
+  watching: boolean; // is the current user watching?
+  worklogs: WorklogDto[];
+  originalEstimate: number | null; // minutes
+  timeSpent: number; // minutes (sum of worklogs)
   projectKey: string;
   createdAt: string;
   updatedAt: string;
@@ -286,6 +318,7 @@ export interface UpdateIssueDto {
   teamId?: string | null;
   startDate?: string | null;
   dueDate?: string | null;
+  originalEstimate?: number | null;
 }
 
 export interface CreateSubtaskDto {
@@ -335,6 +368,116 @@ export interface IssueListQuery {
   search?: string;
   orderBy?: 'rank' | 'priority' | 'createdAt' | 'updatedAt' | 'dueDate' | 'key';
   order?: 'asc' | 'desc';
+}
+
+// ---------------------------------------------------------------------------
+// Search & saved filters
+// ---------------------------------------------------------------------------
+
+export interface IssueFilterCriteria {
+  text?: string;
+  projectKey?: string;
+  statusCategories?: StatusCategory[];
+  assigneeIds?: string[];
+  reporterIds?: string[];
+  types?: IssueType[];
+  priorities?: Priority[];
+  teamIds?: string[];
+  labelIds?: string[];
+}
+
+export interface SearchResultDto {
+  issues: IssueSummaryDto[];
+  total: number;
+}
+
+export interface SavedFilterDto {
+  id: string;
+  name: string;
+  criteria: IssueFilterCriteria;
+  shared: boolean;
+  owner: UserDto;
+}
+
+export interface SaveFilterDto {
+  name: string;
+  criteria: IssueFilterCriteria;
+  shared?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Links, attachments, watchers, worklogs
+// ---------------------------------------------------------------------------
+
+export interface CreateLinkDto {
+  type: LinkType;
+  targetKey: string; // the issue to link to
+}
+
+export interface CreateWorklogDto {
+  minutes: number;
+  comment?: string;
+  startedAt?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Bulk operations (List view)
+// ---------------------------------------------------------------------------
+
+export interface BulkUpdateDto {
+  issueKeys: string[];
+  changes: {
+    statusId?: string;
+    assigneeId?: string | null;
+    priority?: Priority;
+    teamId?: string | null;
+    sprintId?: string | null;
+    addLabelIds?: string[];
+    removeLabelIds?: string[];
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+export interface VelocityPointDto {
+  sprintId: string;
+  sprintName: string;
+  committed: number; // points planned
+  completed: number; // points done
+}
+
+export interface BurndownPointDto {
+  date: string;
+  remaining: number; // points remaining (ideal vs actual)
+  ideal: number;
+}
+
+export interface BurndownDto {
+  sprint: SprintDto | null;
+  totalPoints: number;
+  points: BurndownPointDto[];
+}
+
+export interface CumulativeFlowPointDto {
+  date: string;
+  todo: number;
+  inProgress: number;
+  done: number;
+}
+
+export interface CreatedResolvedPointDto {
+  date: string;
+  created: number;
+  resolved: number;
+}
+
+export interface ReportsDto {
+  velocity: VelocityPointDto[];
+  burndown: BurndownDto;
+  cumulativeFlow: CumulativeFlowPointDto[];
+  createdVsResolved: CreatedResolvedPointDto[];
 }
 
 export interface MoveIssueDto {

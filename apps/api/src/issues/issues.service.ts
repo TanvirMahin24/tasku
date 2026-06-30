@@ -22,6 +22,7 @@ import { UpdateIssueDto } from './dto/update-issue.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { ListIssuesQuery } from './dto/list-issues.query';
 import { CreateSubtaskDto } from './dto/create-subtask.dto';
+import { BulkUpdateDto } from './dto/bulk-update.dto';
 
 // Prisma `include` fragments reused across reads.
 const SUMMARY_INCLUDE = {
@@ -40,6 +41,11 @@ const DETAIL_INCLUDE = {
   activities: { include: { actor: true }, orderBy: { createdAt: 'desc' } },
   children: { include: SUMMARY_INCLUDE, orderBy: { rank: 'asc' } },
   parent: { include: SUMMARY_INCLUDE },
+  attachments: { orderBy: { uploadedAt: 'desc' } },
+  outLinks: { include: { target: { include: SUMMARY_INCLUDE } } },
+  inLinks: { include: { source: { include: SUMMARY_INCLUDE } } },
+  watchers: { include: { user: true } },
+  worklogs: { include: { user: true }, orderBy: { startedAt: 'desc' } },
 } satisfies Prisma.IssueInclude;
 
 // Priority -> numeric weight for list ordering (HIGHEST first when desc).
@@ -145,7 +151,7 @@ export class IssuesService {
       projectKey: project.key,
       issue: toIssueSummaryDto(full),
     });
-    return toIssueDetailDto(full, project.key);
+    return toIssueDetailDto(full, project.key, userId);
   }
 
   private async resolveCreateStatus(
@@ -254,7 +260,7 @@ export class IssuesService {
       projectKey: project!.key,
       issue: toIssueSummaryDto(full),
     });
-    return toIssueDetailDto(full, project!.key);
+    return toIssueDetailDto(full, project!.key, userId);
   }
 
   // ---------------------------------------------------------------------------
@@ -322,7 +328,7 @@ export class IssuesService {
       where: { id: issue.projectId },
       select: { key: true },
     });
-    return toIssueDetailDto(full, project!.key);
+    return toIssueDetailDto(full, project!.key, userId);
   }
 
   // ---------------------------------------------------------------------------
@@ -342,6 +348,8 @@ export class IssuesService {
     const data: Prisma.IssueUpdateInput = {};
     const activities: Prisma.ActivityLogCreateManyInput[] = [];
     const notifications: Prisma.NotificationCreateManyInput[] = [];
+    // Watcher fan-out, deferred until after the main notifications are built.
+    let watcherNotify: { type: NotificationType; message: string } | null = null;
 
     // --- Simple scalar fields ---
     if (dto.title !== undefined && dto.title !== existing.title) {
@@ -389,6 +397,21 @@ export class IssuesService {
           'storyPoints',
           existing.storyPoints?.toString() ?? null,
           dto.storyPoints?.toString() ?? null,
+        ),
+      );
+    }
+    if (
+      dto.originalEstimate !== undefined &&
+      dto.originalEstimate !== existing.originalEstimate
+    ) {
+      data.originalEstimate = dto.originalEstimate;
+      activities.push(
+        this.activity(
+          existing.id,
+          userId,
+          'originalEstimate',
+          existing.originalEstimate?.toString() ?? null,
+          dto.originalEstimate?.toString() ?? null,
         ),
       );
     }
@@ -476,6 +499,11 @@ export class IssuesService {
           message: `${existing.key} moved to ${newStatus.name}`,
         });
       }
+      // Also notify watchers of the status change.
+      watcherNotify = {
+        type: NotificationType.STATUS_CHANGED,
+        message: `${existing.key} moved to ${newStatus.name}`,
+      };
     }
 
     // --- Assignee (human label = displayName) ---
@@ -513,6 +541,15 @@ export class IssuesService {
           issueKey: existing.key,
           message: `You were assigned to ${existing.key}: ${existing.title}`,
         });
+      }
+      // Notify watchers of the assignee change (status change wins if both).
+      if (!watcherNotify) {
+        watcherNotify = {
+          type: NotificationType.ASSIGNED,
+          message: `${existing.key} was reassigned to ${
+            newUser?.displayName ?? 'Unassigned'
+          }`,
+        };
       }
     }
 
@@ -576,6 +613,18 @@ export class IssuesService {
     // --- Labels (replace the whole set) ---
     const labelsChanged = dto.labelIds !== undefined;
 
+    // Fan out to watchers (de-duped against existing recipients, excl. actor).
+    if (watcherNotify) {
+      await this.addWatcherNotifications(
+        existing.id,
+        existing.key,
+        userId,
+        watcherNotify.type,
+        watcherNotify.message,
+        notifications,
+      );
+    }
+
     await this.prisma.$transaction(async (tx) => {
       if (Object.keys(data).length > 0) {
         await tx.issue.update({ where: { id: existing.id }, data });
@@ -609,7 +658,7 @@ export class IssuesService {
       projectKey: project!.key,
       issue: toIssueSummaryDto(full),
     });
-    return toIssueDetailDto(full, project!.key);
+    return toIssueDetailDto(full, project!.key, userId);
   }
 
   // ---------------------------------------------------------------------------
@@ -675,6 +724,15 @@ export class IssuesService {
           message: `${existing.key} moved to ${newStatus.name}`,
         });
       }
+      // Also notify watchers of the status change.
+      await this.addWatcherNotifications(
+        existing.id,
+        existing.key,
+        userId,
+        NotificationType.STATUS_CHANGED,
+        `${existing.key} moved to ${newStatus.name}`,
+        notifications,
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -703,6 +761,160 @@ export class IssuesService {
   }
 
   // ---------------------------------------------------------------------------
+  // Bulk edit (List view) — apply the same changes to many issues at once.
+  // ---------------------------------------------------------------------------
+  async bulkUpdate(
+    key: string,
+    dto: BulkUpdateDto,
+    userId: string,
+  ): Promise<{ updated: number }> {
+    const project = await this.membership.getProjectForMember(key, userId);
+
+    // Only operate on issues that exist, are in this project, and were listed.
+    const issues = await this.prisma.issue.findMany({
+      where: { projectId: project.id, key: { in: dto.issueKeys } },
+    });
+    if (issues.length === 0) {
+      return { updated: 0 };
+    }
+
+    const changes = dto.changes ?? {};
+
+    // Validate FK targets once (status/team/sprint/assignee belong to project).
+    if (changes.statusId) {
+      const status = await this.prisma.status.findFirst({
+        where: { id: changes.statusId, projectId: project.id },
+      });
+      if (!status) {
+        throw new BadRequestException('statusId does not belong to project');
+      }
+    }
+    if (changes.sprintId) {
+      const sprint = await this.prisma.sprint.findFirst({
+        where: { id: changes.sprintId, projectId: project.id },
+      });
+      if (!sprint) {
+        throw new BadRequestException('sprintId does not belong to project');
+      }
+    }
+    if (changes.teamId) {
+      const team = await this.prisma.team.findUnique({
+        where: { id: changes.teamId },
+      });
+      if (!team) throw new BadRequestException('teamId is not a valid team');
+    }
+    if (changes.assigneeId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: changes.assigneeId },
+      });
+      if (!user) {
+        throw new BadRequestException('assigneeId is not a valid user');
+      }
+    }
+
+    const scalarData: Prisma.IssueUpdateInput = {};
+    if (changes.statusId) {
+      scalarData.status = { connect: { id: changes.statusId } };
+    }
+    if (changes.priority) scalarData.priority = changes.priority;
+    if (changes.assigneeId !== undefined) {
+      scalarData.assignee = changes.assigneeId
+        ? { connect: { id: changes.assigneeId } }
+        : { disconnect: true };
+    }
+    if (changes.teamId !== undefined) {
+      scalarData.team = changes.teamId
+        ? { connect: { id: changes.teamId } }
+        : { disconnect: true };
+    }
+    if (changes.sprintId !== undefined) {
+      scalarData.sprint = changes.sprintId
+        ? { connect: { id: changes.sprintId } }
+        : { disconnect: true };
+    }
+
+    let updated = 0;
+    for (const issue of issues) {
+      await this.prisma.$transaction(async (tx) => {
+        if (Object.keys(scalarData).length > 0) {
+          await tx.issue.update({ where: { id: issue.id }, data: scalarData });
+        }
+        if (changes.addLabelIds?.length) {
+          await tx.issueLabel.createMany({
+            data: changes.addLabelIds.map((labelId) => ({
+              issueId: issue.id,
+              labelId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+        if (changes.removeLabelIds?.length) {
+          await tx.issueLabel.deleteMany({
+            where: {
+              issueId: issue.id,
+              labelId: { in: changes.removeLabelIds },
+            },
+          });
+        }
+        const activities: Prisma.ActivityLogCreateManyInput[] = [];
+        if (changes.statusId) {
+          activities.push(
+            this.activity(issue.id, userId, 'status', null, null),
+          );
+        }
+        if (changes.priority) {
+          activities.push(
+            this.activity(
+              issue.id,
+              userId,
+              'priority',
+              issue.priority,
+              changes.priority,
+            ),
+          );
+        }
+        if (changes.assigneeId !== undefined) {
+          activities.push(
+            this.activity(issue.id, userId, 'assignee', null, null),
+          );
+        }
+        if (changes.teamId !== undefined) {
+          activities.push(this.activity(issue.id, userId, 'team', null, null));
+        }
+        if (changes.sprintId !== undefined) {
+          activities.push(
+            this.activity(issue.id, userId, 'sprint', null, null),
+          );
+        }
+        if (changes.addLabelIds?.length || changes.removeLabelIds?.length) {
+          activities.push(
+            this.activity(issue.id, userId, 'labels', null, null),
+          );
+        }
+        if (activities.length) {
+          await tx.activityLog.createMany({ data: activities });
+        }
+      });
+      updated++;
+
+      // Best-effort live update.
+      const full = await this.prisma.issue.findUnique({
+        where: { id: issue.id },
+        include: SUMMARY_INCLUDE,
+      });
+      if (full) {
+        this.events.emit(project.key, {
+          type: 'issue.updated',
+          projectKey: project.key,
+          issue: toIssueSummaryDto(full),
+        });
+      }
+    }
+
+    return { updated };
+  }
+
+  // ---------------------------------------------------------------------------
   // Delete
   // ---------------------------------------------------------------------------
   async remove(
@@ -726,6 +938,38 @@ export class IssuesService {
       throw new NotFoundException('Issue not found');
     }
     return issue;
+  }
+
+  /**
+   * Append notifications for an issue's watchers to an existing notification
+   * batch. Watchers already targeted (e.g. the reporter/assignee) and the actor
+   * are skipped. Used when status/assignee changes so watchers are kept in the
+   * loop alongside the usual recipients.
+   */
+  private async addWatcherNotifications(
+    issueId: string,
+    issueKey: string,
+    actorId: string,
+    type: NotificationType,
+    message: string,
+    notifications: Prisma.NotificationCreateManyInput[],
+  ): Promise<void> {
+    const watchers = await this.prisma.watcher.findMany({
+      where: { issueId },
+      select: { userId: true },
+    });
+    const already = new Set(notifications.map((n) => n.recipientId));
+    for (const w of watchers) {
+      if (w.userId === actorId) continue;
+      if (already.has(w.userId)) continue;
+      already.add(w.userId);
+      notifications.push({
+        recipientId: w.userId,
+        type,
+        issueKey,
+        message,
+      });
+    }
   }
 
   private activity(
