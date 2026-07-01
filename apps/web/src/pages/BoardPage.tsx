@@ -22,7 +22,15 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
-import { Check, ChevronsUpDown, Plus, Rows3, Tag, User } from 'lucide-react';
+import {
+  Check,
+  ChevronsUpDown,
+  Plus,
+  Rows3,
+  Star,
+  Tag,
+  User,
+} from 'lucide-react';
 import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
 import type {
@@ -227,6 +235,15 @@ function BoardView({
     onError: (err) => setMoveError(apiErrorMessage(err, 'Could not update board')),
   });
 
+  const toggleStar = useMutation({
+    mutationFn: (b: BoardSummaryDto) =>
+      b.isStarred ? boardsApi.unstar(b.id) : boardsApi.star(b.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.boards(key) });
+    },
+    onError: (err) => setMoveError(apiErrorMessage(err, 'Could not update star')),
+  });
+
   const move = useMutation({
     mutationFn: ({ issueKey, dto }: { issueKey: string; dto: MoveIssueDto }) =>
       issuesApi.move(issueKey, dto),
@@ -375,6 +392,7 @@ function BoardView({
               currentName={currentBoardName}
               onSelect={onSelectBoard}
               onCreate={() => setCreateBoardOpen(true)}
+              onToggleStar={(b) => toggleStar.mutate(b)}
             />
             {board.board?.teamId && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
@@ -713,13 +731,21 @@ function BoardSwitcher({
   currentName,
   onSelect,
   onCreate,
+  onToggleStar,
 }: {
   boards: BoardSummaryDto[];
   currentBoardId: string | null;
   currentName: string;
   onSelect: (board: BoardSummaryDto) => void;
   onCreate: () => void;
+  onToggleStar: (board: BoardSummaryDto) => void;
 }) {
+  // Default board first, then starred, then the rest.
+  const ordered = [...boards].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    if (a.isStarred !== b.isStarred) return a.isStarred ? -1 : 1;
+    return 0;
+  });
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -745,35 +771,52 @@ function BoardSwitcher({
       {open && (
         <div className="absolute left-0 top-8 z-30 w-56 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
           <div className="max-h-64 overflow-y-auto scrollbar-thin">
-            {boards.length === 0 ? (
+            {ordered.length === 0 ? (
               <p className="px-3 py-2 text-sm text-gray-400">No boards</p>
             ) : (
-              boards.map((b) => (
-                <button
+              ordered.map((b) => (
+                <div
                   key={b.id}
-                  onClick={() => {
-                    onSelect(b);
-                    setOpen(false);
-                  }}
-                  className={clsx(
-                    'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700/60',
-                    b.id === currentBoardId || (b.isDefault && !currentBoardId)
-                      ? 'font-semibold text-brand-700 dark:text-brand-300'
-                      : 'text-gray-700 dark:text-gray-200',
-                  )}
+                  className="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700/60"
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate">{b.name}</span>
-                    {b.isDefault && (
-                      <span className="rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
-                        default
-                      </span>
+                  <button
+                    onClick={() => {
+                      onSelect(b);
+                      setOpen(false);
+                    }}
+                    className={clsx(
+                      'flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-1.5 text-left text-sm',
+                      b.id === currentBoardId || (b.isDefault && !currentBoardId)
+                        ? 'font-semibold text-brand-700 dark:text-brand-300'
+                        : 'text-gray-700 dark:text-gray-200',
                     )}
-                  </span>
-                  {b.id === currentBoardId && (
-                    <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />
-                  )}
-                </button>
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{b.name}</span>
+                      {b.isDefault && (
+                        <span className="rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                          default
+                        </span>
+                      )}
+                    </span>
+                    {b.id === currentBoardId && (
+                      <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => onToggleStar(b)}
+                    title={b.isStarred ? 'Unstar board' : 'Star board'}
+                    aria-label={b.isStarred ? 'Unstar board' : 'Star board'}
+                    className="px-2 py-1.5 text-gray-300 hover:text-amber-500"
+                  >
+                    <Star
+                      className={clsx(
+                        'h-3.5 w-3.5',
+                        b.isStarred && 'fill-amber-400 text-amber-400',
+                      )}
+                    />
+                  </button>
+                </div>
               ))
             )}
           </div>

@@ -7,6 +7,8 @@ export const qk = {
   users: ['users'] as const,
 
   projects: ['projects'] as const,
+  recommendedProjects: ['projects', 'recommended'] as const,
+  dashboard: ['dashboard'] as const,
   project: (key: string) => ['project', key] as const,
   statuses: (key: string) => ['project', key, 'statuses'] as const,
   labels: (key: string) => ['project', key, 'labels'] as const,
@@ -28,6 +30,7 @@ export const qk = {
   comments: (issueKey: string) => ['issue', issueKey, 'comments'] as const,
 
   sprints: (key: string) => ['project', key, 'sprints'] as const,
+  versions: (key: string) => ['project', key, 'versions'] as const,
 
   teams: ['teams'] as const,
   team: (id: string) => ['team', id] as const,

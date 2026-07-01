@@ -26,18 +26,22 @@ import {
   type AttachmentDto,
   type CommentDto,
   type CreateLinkDto,
+  type CustomFieldEntryDto,
+  type CustomFieldValue,
+  type DeliveryRollupDto,
   type IssueDetailDto,
   type IssueLinkDto,
+  type VersionSummaryDto,
   type IssueSummaryDto,
   type LinkType,
   type StatusDto,
   type UpdateIssueDto,
   type UserDto,
-  type WorklogDto,
 } from '@tasku/types';
 import {
   apiErrorMessage,
   commentsApi,
+  customFieldsApi,
   fetchAttachmentBlobUrl,
   issuesApi,
   searchApi,
@@ -48,9 +52,7 @@ import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
   PRIORITY_META,
-  formatMinutes,
   humanizeField,
-  parseDuration,
   relativeTime,
   toDateInput,
 } from '@/lib/format';
@@ -61,6 +63,7 @@ import { Button } from '@/components/ui/Button';
 import { Select, inputClass } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { AssigneeSelect } from '@/components/ui/AssigneeSelect';
+import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { IssueTypeIcon } from '@/components/ui/icons';
 
@@ -116,7 +119,7 @@ function DrawerBody({
   onDeleted?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { statuses, labels, users } = useProjectMeta(projectKey);
+  const { statuses, labels, users, versions } = useProjectMeta(projectKey);
 
   const { data: teams = [] } = useQuery({
     queryKey: qk.teams,
@@ -129,16 +132,14 @@ function DrawerBody({
   });
 
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Keep local editable fields in sync when the issue (re)loads.
   useEffect(() => {
     if (issue) {
       setTitle(issue.title);
-      setDescription(issue.description ?? '');
     }
-  }, [issue?.id, issue?.title, issue?.description]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [issue?.id, issue?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function invalidateBoards() {
     queryClient.invalidateQueries({ queryKey: ['project', projectKey, 'board'] });
@@ -241,16 +242,10 @@ function DrawerBody({
           )}
 
           <Section label="Description">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => {
-                if (description !== (issue.description ?? '')) {
-                  patch({ description });
-                }
-              }}
-              placeholder="Add a description…"
-              className={`${inputClass} min-h-[120px] resize-y`}
+            <DescriptionEditor
+              key={issue.id}
+              value={issue.description}
+              onSave={(json) => patch({ description: json })}
             />
           </Section>
 
@@ -262,14 +257,11 @@ function DrawerBody({
             />
           </Section>
 
-          <Section label="Time tracking">
-            <TimeTrackingPanel
-              issueKey={issue.key}
-              originalEstimate={issue.originalEstimate}
-              timeSpent={issue.timeSpent}
-              worklogs={issue.worklogs}
-            />
-          </Section>
+          {issue.delivery && (
+            <Section label="Delivery">
+              <DeliveryPanel delivery={issue.delivery} links={issue.links} />
+            </Section>
+          )}
 
           <Section label="Links">
             <LinksPanel issueKey={issue.key} links={issue.links} />
@@ -381,6 +373,14 @@ function DrawerBody({
             />
           </Field>
 
+          <Field label="Fix versions">
+            <VersionMultiSelect
+              versions={versions}
+              value={issue.versions.map((v) => v.id)}
+              onChange={(ids) => patch({ fixVersionIds: ids })}
+            />
+          </Field>
+
           <div className="grid grid-cols-2 gap-2">
             <Field label="Start date">
               <input
@@ -411,6 +411,20 @@ function DrawerBody({
               watchers={issue.watchers}
             />
           </Field>
+
+          {issue.customFields.length > 0 && (
+            <div className="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+              {issue.customFields.map((cf) => (
+                <Field key={cf.field.id} label={cf.field.name}>
+                  <CustomFieldControl
+                    issueKey={issue.key}
+                    entry={cf}
+                    users={users}
+                  />
+                </Field>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-1.5 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
             <div className="flex items-center justify-between">
@@ -695,196 +709,6 @@ function ActivityText({ activity }: { activity: ActivityDto }) {
 }
 
 // ---------------------------------------------------------------------------
-// Time tracking
-// ---------------------------------------------------------------------------
-
-function TimeTrackingPanel({
-  issueKey,
-  originalEstimate,
-  timeSpent,
-  worklogs,
-}: {
-  issueKey: string;
-  originalEstimate: number | null;
-  timeSpent: number;
-  worklogs: WorklogDto[];
-}) {
-  const queryClient = useQueryClient();
-  const [estimateStr, setEstimateStr] = useState(
-    originalEstimate != null ? formatMinutes(originalEstimate) : '',
-  );
-  const [duration, setDuration] = useState('');
-  const [comment, setComment] = useState('');
-  const [started, setStarted] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  function invalidate() {
-    queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
-  }
-
-  const setEstimate = useMutation({
-    mutationFn: (minutes: number | null) =>
-      issuesApi.update(issueKey, { originalEstimate: minutes }),
-    onSuccess: invalidate,
-    onError: (err) => setError(apiErrorMessage(err, 'Could not set estimate')),
-  });
-
-  const addLog = useMutation({
-    mutationFn: (minutes: number) =>
-      issuesApi.addWorklog(issueKey, {
-        minutes,
-        comment: comment.trim() || undefined,
-        startedAt: started ? new Date(started).toISOString() : undefined,
-      }),
-    onSuccess: () => {
-      setDuration('');
-      setComment('');
-      setStarted('');
-      invalidate();
-    },
-    onError: (err) => setError(apiErrorMessage(err, 'Could not log work')),
-  });
-
-  const deleteLog = useMutation({
-    mutationFn: (id: string) => issuesApi.deleteWorklog(id),
-    onSuccess: invalidate,
-  });
-
-  const pct =
-    originalEstimate && originalEstimate > 0
-      ? Math.min(100, Math.round((timeSpent / originalEstimate) * 100))
-      : 0;
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <span className="mb-1 block text-xs text-gray-500">Original estimate</span>
-          <input
-            value={estimateStr}
-            onChange={(e) => setEstimateStr(e.target.value)}
-            onBlur={() => {
-              setError(null);
-              const raw = estimateStr.trim();
-              if (raw === '') {
-                if (originalEstimate != null) setEstimate.mutate(null);
-                return;
-              }
-              const mins = parseDuration(raw);
-              if (mins == null) {
-                setError('Could not parse estimate (try "2h 30m").');
-                setEstimateStr(
-                  originalEstimate != null ? formatMinutes(originalEstimate) : '',
-                );
-              } else if (mins !== (originalEstimate ?? null)) {
-                setEstimate.mutate(mins);
-              }
-            }}
-            placeholder="e.g. 2h 30m"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <span className="mb-1 block text-xs text-gray-500">Logged</span>
-          <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-200">
-            {formatMinutes(timeSpent)}
-          </p>
-        </div>
-      </div>
-
-      {originalEstimate != null && originalEstimate > 0 && (
-        <div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-brand-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-gray-400">
-            {formatMinutes(timeSpent)} of {formatMinutes(originalEstimate)} ({pct}%)
-          </p>
-        </div>
-      )}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError(null);
-          const mins = parseDuration(duration);
-          if (mins == null || mins <= 0) {
-            setError('Enter a valid duration (e.g. "1h 30m").');
-            return;
-          }
-          addLog.mutate(mins);
-        }}
-        className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
-      >
-        <div className="flex items-center gap-2">
-          <input
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="Duration (e.g. 1h 30m)"
-            className={`${inputClass} flex-1`}
-          />
-          <input
-            type="date"
-            value={started}
-            onChange={(e) => setStarted(e.target.value)}
-            className={`${inputClass} w-auto`}
-          />
-        </div>
-        <input
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Comment (optional)"
-          className={inputClass}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          loading={addLog.isPending}
-          disabled={!duration.trim()}
-        >
-          Log work
-        </Button>
-      </form>
-
-      {error && <p className="text-xs text-red-600">{error}</p>}
-
-      {worklogs.length > 0 && (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
-          {worklogs.map((w) => (
-            <li key={w.id} className="flex items-start gap-2.5 px-3 py-2 text-sm">
-              <Avatar user={w.user} size="xs" className="mt-0.5" />
-              <div className="min-w-0 flex-1">
-                <p className="text-gray-700">
-                  <span className="font-medium text-gray-900">
-                    {w.user.displayName}
-                  </span>{' '}
-                  logged{' '}
-                  <span className="font-medium">{formatMinutes(w.minutes)}</span>{' '}
-                  <span className="text-gray-400">· {relativeTime(w.startedAt)}</span>
-                </p>
-                {w.comment && (
-                  <p className="mt-0.5 text-xs text-gray-500">{w.comment}</p>
-                )}
-              </div>
-              <button
-                onClick={() => deleteLog.mutate(w.id)}
-                className="text-gray-300 hover:text-red-600"
-                title="Delete worklog"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Links
 // ---------------------------------------------------------------------------
 
@@ -893,6 +717,8 @@ const LINK_TYPE_LABEL: Record<LinkType, string> = {
   IS_BLOCKED_BY: 'is blocked by',
   RELATES_TO: 'relates to',
   DUPLICATES: 'duplicates',
+  DELIVERS: 'delivers',
+  DELIVERED_BY: 'is delivered by',
 };
 
 const LINK_TYPES: LinkType[] = [
@@ -900,14 +726,18 @@ const LINK_TYPES: LinkType[] = [
   'IS_BLOCKED_BY',
   'RELATES_TO',
   'DUPLICATES',
+  'DELIVERS',
+  'DELIVERED_BY',
 ];
 
 function groupLabel(link: IssueLinkDto): string {
   // Display label reflects how the *current* issue relates to the other.
   if (link.direction === 'outward') return LINK_TYPE_LABEL[link.type];
-  // Inward: invert blocks/is-blocked-by.
+  // Inward: invert the paired relations.
   if (link.type === 'BLOCKS') return LINK_TYPE_LABEL.IS_BLOCKED_BY;
   if (link.type === 'IS_BLOCKED_BY') return LINK_TYPE_LABEL.BLOCKS;
+  if (link.type === 'DELIVERS') return LINK_TYPE_LABEL.DELIVERED_BY;
+  if (link.type === 'DELIVERED_BY') return LINK_TYPE_LABEL.DELIVERS;
   return LINK_TYPE_LABEL[link.type];
 }
 
@@ -1363,6 +1193,251 @@ function DrawerHeader({
           <X className="h-4 w-4" />
         </button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Custom field controls
+// ---------------------------------------------------------------------------
+
+function CustomFieldControl({
+  issueKey,
+  entry,
+  users,
+}: {
+  issueKey: string;
+  entry: CustomFieldEntryDto;
+  users: UserDto[];
+}) {
+  const queryClient = useQueryClient();
+  const { field, value } = entry;
+  const save = useMutation({
+    mutationFn: (v: CustomFieldValue) =>
+      customFieldsApi.setValue(issueKey, field.id, v),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) }),
+  });
+  const set = (v: CustomFieldValue) => save.mutate(v);
+
+  switch (field.type) {
+    case 'TEXT':
+    case 'URL':
+      return (
+        <input
+          type={field.type === 'URL' ? 'url' : 'text'}
+          defaultValue={(value as string) ?? ''}
+          key={String(value)}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v !== ((value as string) ?? '')) set(v || null);
+          }}
+          className={inputClass}
+          placeholder="—"
+        />
+      );
+    case 'TEXTAREA':
+      return (
+        <textarea
+          defaultValue={(value as string) ?? ''}
+          key={String(value)}
+          rows={3}
+          onBlur={(e) => {
+            const v = e.target.value;
+            if (v !== ((value as string) ?? '')) set(v || null);
+          }}
+          className={`${inputClass} resize-y`}
+          placeholder="—"
+        />
+      );
+    case 'NUMBER':
+      return (
+        <input
+          type="number"
+          defaultValue={value == null ? '' : String(value)}
+          key={String(value)}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            const next = raw === '' ? null : Number(raw);
+            if (next !== ((value as number) ?? null)) set(next);
+          }}
+          className={inputClass}
+          placeholder="—"
+        />
+      );
+    case 'DATE':
+      return (
+        <input
+          type="date"
+          defaultValue={value ? String(value).slice(0, 10) : ''}
+          key={String(value)}
+          onChange={(e) => set(e.target.value || null)}
+          className={inputClass}
+        />
+      );
+    case 'CHECKBOX':
+      return (
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => set(e.target.checked)}
+          className="h-4 w-4"
+        />
+      );
+    case 'SELECT':
+      return (
+        <Select
+          value={(value as string) ?? ''}
+          onChange={(e) => set(e.target.value || null)}
+          options={[
+            { value: '', label: '—' },
+            ...(field.options ?? []).map((o) => ({ value: o, label: o })),
+          ]}
+        />
+      );
+    case 'MULTI_SELECT':
+      return (
+        <MultiSelectControl
+          options={field.options ?? []}
+          value={(value as string[]) ?? []}
+          onChange={set}
+        />
+      );
+    case 'USER':
+      return (
+        <AssigneeSelect
+          users={users}
+          value={(value as string) ?? null}
+          onChange={(id) => set(id)}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+function MultiSelectControl({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string[];
+  onChange: (v: string[] | null) => void;
+}) {
+  const toggle = (o: string) => {
+    const next = value.includes(o)
+      ? value.filter((x) => x !== o)
+      : [...value, o];
+    onChange(next.length ? next : null);
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const on = value.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            onClick={() => toggle(o)}
+            className={
+              on
+                ? 'rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                : 'rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/60'
+            }
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Versions + delivery
+// ---------------------------------------------------------------------------
+
+function VersionMultiSelect({
+  versions,
+  value,
+  onChange,
+}: {
+  versions: VersionSummaryDto[];
+  value: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  if (versions.length === 0) {
+    return <p className="text-xs text-gray-400">No versions yet.</p>;
+  }
+  const toggle = (id: string) =>
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {versions.map((v) => {
+        const on = value.includes(v.id);
+        return (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => toggle(v.id)}
+            className={
+              on
+                ? 'rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                : 'rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/60'
+            }
+          >
+            {v.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DeliveryPanel({
+  delivery,
+  links,
+}: {
+  delivery: DeliveryRollupDto;
+  links: IssueLinkDto[];
+}) {
+  const deliveryLinks = links.filter(
+    (l) => l.type === 'DELIVERS' || l.type === 'DELIVERED_BY',
+  );
+  const total = delivery.total || 1;
+  const w = (n: number) => `${(n / total) * 100}%`;
+  const pct = Math.round((delivery.done / total) * 100);
+  return (
+    <div className="space-y-2">
+      <div className="flex h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        <div style={{ width: w(delivery.done) }} className="bg-emerald-500" />
+        <div style={{ width: w(delivery.inProgress) }} className="bg-blue-400" />
+        <div
+          style={{ width: w(delivery.todo) }}
+          className="bg-gray-300 dark:bg-gray-600"
+        />
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        {pct}% delivered · {delivery.done}/{delivery.total} done
+      </p>
+      <ul className="space-y-0.5">
+        {deliveryLinks.map((l) => (
+          <Link
+            key={l.id}
+            to={`/issues/${l.issue.key}`}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <IssueTypeIcon type={l.issue.type} />
+            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+              {l.issue.key}
+            </span>
+            <span className="truncate text-gray-700 dark:text-gray-200">
+              {l.issue.title}
+            </span>
+          </Link>
+        ))}
+      </ul>
     </div>
   );
 }

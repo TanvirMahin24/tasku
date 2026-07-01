@@ -26,20 +26,25 @@ import {
   Lock,
   Plus,
   Shield,
+  SlidersHorizontal,
   Trash2,
   Users as UsersIcon,
   Workflow,
 } from 'lucide-react';
 import clsx from 'clsx';
-import type {
-  ComponentDto,
-  Role,
-  StatusCategory,
-  StatusDto,
+import {
+  CUSTOM_FIELD_TYPES,
+  type ComponentDto,
+  type CustomFieldDefDto,
+  type CustomFieldType,
+  type Role,
+  type StatusCategory,
+  type StatusDto,
 } from '@tasku/types';
 import {
   apiErrorMessage,
   componentsApi,
+  customFieldsApi,
   projectsApi,
   statusesApi,
   type ProjectMemberDto,
@@ -53,13 +58,29 @@ import { Select, inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
 
-type Tab = 'workflow' | 'components' | 'members';
+type Tab = 'workflow' | 'fields' | 'components' | 'members';
 
 const TABS: { id: Tab; label: string; icon: typeof Workflow }[] = [
   { id: 'workflow', label: 'Columns & workflow', icon: Workflow },
+  { id: 'fields', label: 'Custom fields', icon: SlidersHorizontal },
   { id: 'components', label: 'Components', icon: ComponentIcon },
   { id: 'members', label: 'Members', icon: UsersIcon },
 ];
+
+const FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
+  TEXT: 'Text',
+  TEXTAREA: 'Text (long)',
+  NUMBER: 'Number',
+  DATE: 'Date',
+  CHECKBOX: 'Checkbox',
+  SELECT: 'Select (single)',
+  MULTI_SELECT: 'Multi-select',
+  USER: 'User',
+  URL: 'URL',
+};
+
+const NEEDS_OPTIONS = (t: CustomFieldType) =>
+  t === 'SELECT' || t === 'MULTI_SELECT';
 
 const CATEGORY_OPTIONS: { value: StatusCategory; label: string }[] = [
   { value: 'TODO', label: 'To Do' },
@@ -136,6 +157,7 @@ export default function SettingsPage() {
           <div className="min-w-0 flex-1 overflow-y-auto p-6 scrollbar-thin dark:bg-gray-950">
             <div className="mx-auto max-w-3xl">
               {tab === 'workflow' && <WorkflowTab projectKey={key} />}
+              {tab === 'fields' && <CustomFieldsTab projectKey={key} />}
               {tab === 'components' && <ComponentsTab projectKey={key} />}
               {tab === 'members' && <MembersTab projectKey={key} />}
             </div>
@@ -590,6 +612,202 @@ function ComponentRow({
         <Trash2 className="h-4 w-4" />
       </button>
     </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields tab
+// ---------------------------------------------------------------------------
+
+const CUSTOM_FIELDS_KEY = (projectKey: string) =>
+  ['project', projectKey, 'custom-fields'] as const;
+
+function CustomFieldsTab({ projectKey }: { projectKey: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const { data: fields = [], isLoading } = useQuery({
+    queryKey: CUSTOM_FIELDS_KEY(projectKey),
+    queryFn: () => customFieldsApi.list(projectKey),
+    enabled: !!projectKey,
+  });
+
+  if (isLoading) return <PageSpinner label="Loading fields…" />;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          Custom fields
+        </h2>
+        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          Add fields that appear on every issue in this project, beside the
+          built-in ones.
+        </p>
+      </div>
+
+      {error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </p>
+      )}
+
+      {fields.length === 0 ? (
+        <p className="text-sm text-gray-400">No custom fields yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {fields.map((f) => (
+            <FieldRow
+              key={f.id}
+              field={f}
+              projectKey={projectKey}
+              onError={setError}
+            />
+          ))}
+        </ul>
+      )}
+
+      <AddFieldForm projectKey={projectKey} onError={setError} />
+    </div>
+  );
+}
+
+function FieldRow({
+  field,
+  projectKey,
+  onError,
+}: {
+  field: CustomFieldDefDto;
+  projectKey: string;
+  onError: (m: string | null) => void;
+}) {
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () => customFieldsApi.remove(field.id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: CUSTOM_FIELDS_KEY(projectKey) }),
+    onError: (err) => onError(apiErrorMessage(err, 'Could not delete field')),
+  });
+
+  return (
+    <li className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <SlidersHorizontal className="h-4 w-4 shrink-0 text-gray-400" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+          {field.name}
+        </p>
+        <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+          {FIELD_TYPE_LABELS[field.type]}
+          {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
+          {field.required ? ' · required' : ''}
+        </p>
+      </div>
+      <button
+        onClick={() => {
+          if (
+            confirm(
+              `Delete the "${field.name}" field? Its values on all issues are removed.`,
+            )
+          ) {
+            onError(null);
+            remove.mutate();
+          }
+        }}
+        disabled={remove.isPending}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10"
+        title="Delete field"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </li>
+  );
+}
+
+function AddFieldForm({
+  projectKey,
+  onError,
+}: {
+  projectKey: string;
+  onError: (m: string | null) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [type, setType] = useState<CustomFieldType>('TEXT');
+  const [optionsStr, setOptionsStr] = useState('');
+  const [required, setRequired] = useState(false);
+
+  const parsedOptions = optionsStr
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const optionsInvalid = NEEDS_OPTIONS(type) && parsedOptions.length === 0;
+
+  const create = useMutation({
+    mutationFn: () =>
+      customFieldsApi.create(projectKey, {
+        name: name.trim(),
+        type,
+        options: NEEDS_OPTIONS(type) ? parsedOptions : undefined,
+        required,
+      }),
+    onSuccess: () => {
+      setName('');
+      setType('TEXT');
+      setOptionsStr('');
+      setRequired(false);
+      queryClient.invalidateQueries({ queryKey: CUSTOM_FIELDS_KEY(projectKey) });
+    },
+    onError: (err) => onError(apiErrorMessage(err, 'Could not add field')),
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onError(null);
+        if (name.trim() && !optionsInvalid) create.mutate();
+      }}
+      className="space-y-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New field name…"
+          className={`${inputClass} h-9 min-w-[12rem] flex-1`}
+        />
+        <Select
+          value={type}
+          onChange={(e) => setType(e.target.value as CustomFieldType)}
+          options={CUSTOM_FIELD_TYPES.map((t) => ({
+            value: t,
+            label: FIELD_TYPE_LABELS[t],
+          }))}
+          className="h-9 w-40"
+        />
+        <Button
+          type="submit"
+          loading={create.isPending}
+          disabled={!name.trim() || optionsInvalid}
+        >
+          <Plus className="h-4 w-4" /> Add
+        </Button>
+      </div>
+      {NEEDS_OPTIONS(type) && (
+        <input
+          value={optionsStr}
+          onChange={(e) => setOptionsStr(e.target.value)}
+          placeholder="Options, comma-separated (e.g. Low, Medium, High)"
+          className={`${inputClass} h-9 w-full`}
+        />
+      )}
+      <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input
+          type="checkbox"
+          checked={required}
+          onChange={(e) => setRequired(e.target.checked)}
+        />
+        Required
+      </label>
+    </form>
   );
 }
 

@@ -22,6 +22,9 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { WatchersModule } from './watchers/watchers.module';
 import { WorklogsModule } from './worklogs/worklogs.module';
 import { ReportsModule } from './reports/reports.module';
+import { CustomFieldsModule } from './custom-fields/custom-fields.module';
+import { VersionsModule } from './versions/versions.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -48,6 +51,9 @@ import { ReportsModule } from './reports/reports.module';
     WatchersModule,
     WorklogsModule,
     ReportsModule,
+    CustomFieldsModule,
+    VersionsModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

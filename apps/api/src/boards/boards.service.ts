@@ -51,7 +51,11 @@ export class BoardsService {
       const created = await this.ensureDefaultBoard(project.id);
       boards = [created];
     }
-    return boards.map(toBoardSummaryDto);
+    const starred = await this.starredSet(
+      boards.map((b) => b.id),
+      userId,
+    );
+    return boards.map((b) => toBoardSummaryDto(b, starred.has(b.id)));
   }
 
   async createForProject(
@@ -79,7 +83,7 @@ export class BoardsService {
 
   async getOne(id: string, userId: string): Promise<BoardSummaryDto> {
     const board = await this.requireBoardForMember(id, userId);
-    return toBoardSummaryDto(board);
+    return toBoardSummaryDto(board, await this.isStarred(board.id, userId));
   }
 
   async update(
@@ -109,7 +113,7 @@ export class BoardsService {
       where: { id: board.id },
       data,
     });
-    return toBoardSummaryDto(updated);
+    return toBoardSummaryDto(updated, await this.isStarred(board.id, userId));
   }
 
   async remove(id: string, userId: string): Promise<{ success: boolean }> {
@@ -119,6 +123,45 @@ export class BoardsService {
     }
     await this.prisma.board.delete({ where: { id: board.id } });
     return { success: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stars (per-user favourites)
+  // ---------------------------------------------------------------------------
+  async star(id: string, userId: string): Promise<{ starred: boolean }> {
+    await this.requireBoardForMember(id, userId);
+    await this.prisma.boardStar.upsert({
+      where: { boardId_userId: { boardId: id, userId } },
+      create: { boardId: id, userId },
+      update: {},
+    });
+    return { starred: true };
+  }
+
+  async unstar(id: string, userId: string): Promise<{ starred: boolean }> {
+    await this.requireBoardForMember(id, userId);
+    await this.prisma.boardStar.deleteMany({ where: { boardId: id, userId } });
+    return { starred: false };
+  }
+
+  private async isStarred(boardId: string, userId: string): Promise<boolean> {
+    const row = await this.prisma.boardStar.findUnique({
+      where: { boardId_userId: { boardId, userId } },
+      select: { id: true },
+    });
+    return !!row;
+  }
+
+  private async starredSet(
+    boardIds: string[],
+    userId: string,
+  ): Promise<Set<string>> {
+    if (boardIds.length === 0) return new Set();
+    const rows = await this.prisma.boardStar.findMany({
+      where: { userId, boardId: { in: boardIds } },
+      select: { boardId: true },
+    });
+    return new Set(rows.map((r) => r.boardId));
   }
 
   // ---------------------------------------------------------------------------
@@ -230,7 +273,7 @@ export class BoardsService {
       project: toProjectDto(project, membership.role as Role),
       columns,
       activeSprint: activeSprint ? toSprintDto(activeSprint) : null,
-      board: toBoardSummaryDto(board),
+      board: toBoardSummaryDto(board, await this.isStarred(board.id, userId)),
     };
   }
 

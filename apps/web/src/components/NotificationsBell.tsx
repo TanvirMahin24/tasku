@@ -7,6 +7,8 @@ import type { NotificationDto } from '@tasku/types';
 import { notificationsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { relativeTime } from '@/lib/format';
+import { subscribeToNotifications } from '@/lib/socket';
+import { useAuthStore } from '@/store/auth';
 import { Spinner } from '@/components/ui/Spinner';
 
 const TYPE_LABEL: Record<NotificationDto['type'], string> = {
@@ -20,12 +22,20 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const token = useAuthStore((s) => s.token);
 
   const { data, isLoading } = useQuery({
     queryKey: qk.notifications,
     queryFn: notificationsApi.list,
-    refetchInterval: 30_000,
+    refetchInterval: 30_000, // fallback poll; live updates arrive over the socket
   });
+
+  // Live: refetch the moment the server pushes a notification to this user.
+  useEffect(() => {
+    return subscribeToNotifications(token, () => {
+      queryClient.invalidateQueries({ queryKey: qk.notifications });
+    });
+  }, [token, queryClient]);
 
   const notifications = data ?? [];
   const unread = notifications.filter((n) => !n.read).length;

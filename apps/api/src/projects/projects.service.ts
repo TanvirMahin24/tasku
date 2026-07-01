@@ -88,6 +88,17 @@ export class ProjectsService {
     return memberships.map((m) => toProjectDto(m.project, m.role));
   }
 
+  /** Projects the user is not a member of — suggested spaces to join. */
+  async recommended(userId: string): Promise<ProjectDto[]> {
+    const projects = await this.prisma.project.findMany({
+      where: { members: { none: { userId } } },
+      include: { lead: true },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    });
+    return projects.map((p) => toProjectDto(p));
+  }
+
   async findOne(key: string, userId: string): Promise<ProjectDto> {
     const project = await this.prisma.project.findUnique({
       where: { key },

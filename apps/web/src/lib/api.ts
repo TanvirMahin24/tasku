@@ -19,6 +19,13 @@ import type {
   CreateSubtaskDto,
   CreateTeamDto,
   CreateWorklogDto,
+  CreateCustomFieldDto,
+  CreateVersionDto,
+  CustomFieldDefDto,
+  CustomFieldValue,
+  DashboardDto,
+  UpdateVersionDto,
+  VersionDto,
   IssueDetailDto,
   IssueFilterCriteria,
   IssueLinkDto,
@@ -42,6 +49,7 @@ import type {
   TimelineDto,
   UpdateBoardDto,
   UpdateComponentDto,
+  UpdateCustomFieldDto,
   UpdateIssueDto,
   UpdateMemberRoleDto,
   UpdateStatusDto,
@@ -139,6 +147,8 @@ export interface ProjectMemberDto {
 
 export const projectsApi = {
   list: () => api.get<ProjectDto[]>('/projects').then((r) => r.data),
+  recommended: () =>
+    api.get<ProjectDto[]>('/projects/recommended').then((r) => r.data),
   get: (key: string) =>
     api.get<ProjectDto>(`/projects/${key}`).then((r) => r.data),
   create: (dto: CreateProjectDto) =>
@@ -255,6 +265,66 @@ export const boardsApi = {
     api.patch<BoardSummaryDto>(`/boards/${boardId}`, dto).then((r) => r.data),
   remove: (boardId: string) =>
     api.delete<void>(`/boards/${boardId}`).then((r) => r.data),
+  star: (boardId: string) =>
+    api
+      .post<{ starred: boolean }>(`/boards/${boardId}/star`)
+      .then((r) => r.data),
+  unstar: (boardId: string) =>
+    api
+      .delete<{ starred: boolean }>(`/boards/${boardId}/star`)
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Custom fields
+// ---------------------------------------------------------------------------
+
+export const customFieldsApi = {
+  list: (key: string) =>
+    api
+      .get<CustomFieldDefDto[]>(`/projects/${key}/custom-fields`)
+      .then((r) => r.data),
+  create: (key: string, dto: CreateCustomFieldDto) =>
+    api
+      .post<CustomFieldDefDto>(`/projects/${key}/custom-fields`, dto)
+      .then((r) => r.data),
+  update: (id: string, dto: UpdateCustomFieldDto) =>
+    api
+      .patch<CustomFieldDefDto>(`/custom-fields/${id}`, dto)
+      .then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/custom-fields/${id}`).then((r) => r.data),
+  setValue: (issueKey: string, fieldId: string, value: CustomFieldValue) =>
+    api
+      .put<{ success: boolean }>(`/issues/${issueKey}/fields/${fieldId}`, {
+        value,
+      })
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Versions / releases
+// ---------------------------------------------------------------------------
+
+export const versionsApi = {
+  list: (key: string) =>
+    api.get<VersionDto[]>(`/projects/${key}/versions`).then((r) => r.data),
+  create: (key: string, dto: CreateVersionDto) =>
+    api
+      .post<VersionDto>(`/projects/${key}/versions`, dto)
+      .then((r) => r.data),
+  update: (id: string, dto: UpdateVersionDto) =>
+    api.patch<VersionDto>(`/versions/${id}`, dto).then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/versions/${id}`).then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+export const dashboardApi = {
+  get: () => api.get<DashboardDto>('/dashboard').then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

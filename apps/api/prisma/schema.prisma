@@ -34,6 +34,7 @@ model User {
   watching      Watcher[]
   worklogs      Worklog[]
   savedFilters  SavedFilter[]
+  boardStars    BoardStar[]
 }
 
 enum Role {
@@ -77,6 +78,8 @@ model Project {
   labels     Label[]
   components Component[]
   boards     Board[]
+  customFields CustomFieldDefinition[]
+  versions   Version[]
 }
 
 enum StatusCategory {
@@ -104,6 +107,7 @@ model Status {
 // ---------------------------------------------------------------------------
 
 enum IssueType {
+  IDEA
   EPIC
   STORY
   TASK
@@ -159,6 +163,8 @@ model Issue {
   inLinks     IssueLink[]   @relation("LinkTarget")
   watchers    Watcher[]
   worklogs    Worklog[]
+  customValues CustomFieldValue[]
+  versions    Version[]         @relation("IssueVersions")
 
   @@index([projectId])
   @@index([statusId])
@@ -172,6 +178,8 @@ enum LinkType {
   IS_BLOCKED_BY
   RELATES_TO
   DUPLICATES
+  DELIVERS
+  DELIVERED_BY
 }
 
 model IssueLink {
@@ -386,8 +394,23 @@ model Board {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   team    Team?   @relation(fields: [teamId], references: [id])
+  stars   BoardStar[]
 
   @@index([projectId])
+}
+
+// A user's starred/favourite boards.
+model BoardStar {
+  id        String   @id @default(cuid())
+  boardId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------------------
@@ -432,4 +455,74 @@ model SavedFilter {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([ownerId])
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields — project-defined fields shown beside the built-in ones.
+// SELECT/MULTI_SELECT carry their option list in `options` (a JSON string[]).
+// A value is stored as JSON so one column fits every type.
+// ---------------------------------------------------------------------------
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  CHECKBOX
+  SELECT
+  MULTI_SELECT
+  USER
+  URL
+}
+
+model CustomFieldDefinition {
+  id        String          @id @default(cuid())
+  projectId String
+  name      String
+  type      CustomFieldType
+  options   Json? // string[] for SELECT / MULTI_SELECT
+  required  Boolean         @default(false)
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+
+  project Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values  CustomFieldValue[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model CustomFieldValue {
+  id      String @id @default(cuid())
+  fieldId String
+  issueId String
+  value   Json // string | number | boolean | string[] | ISO date | userId
+
+  field CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  issue Issue                 @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, issueId])
+  @@index([issueId])
+}
+
+// ---------------------------------------------------------------------------
+// Versions / releases — an issue's fixVersions (many-to-many). A version's
+// delivery progress is derived from its issues' status categories.
+// ---------------------------------------------------------------------------
+
+model Version {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  released    Boolean   @default(false)
+  startDate   DateTime?
+  releaseDate DateTime?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  Issue[] @relation("IssueVersions")
+
+  @@unique([projectId, name])
+  @@index([projectId])
 }

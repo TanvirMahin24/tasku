@@ -12,11 +12,13 @@ import {
   ChevronsUpDown,
   Columns3,
   GanttChartSquare,
+  Home,
   LayoutDashboard,
   ListTodo,
   LogOut,
   Monitor,
   Moon,
+  Package,
   Plus,
   Rows3,
   Search,
@@ -93,8 +95,11 @@ export function AppLayout() {
               ⌘K
             </kbd>
           </button>
+          <SidebarLink to="/dashboard" icon={Home}>
+            Dashboard
+          </SidebarLink>
           <SidebarLink to="/" icon={ListTodo} end>
-            Projects
+            Spaces
           </SidebarLink>
           <SidebarLink to="/teams" icon={Users}>
             Teams
@@ -140,6 +145,12 @@ export function AppLayout() {
                 icon={BarChart3}
               >
                 Reports
+              </SidebarLink>
+              <SidebarLink
+                to={`/projects/${activeProject.key}/releases`}
+                icon={Package}
+              >
+                Releases
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/settings`}
