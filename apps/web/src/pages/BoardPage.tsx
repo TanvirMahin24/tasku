@@ -658,7 +658,7 @@ function QuickFilterBar({
                 onClick={() => toggleAssignee(u.id)}
                 title={u.displayName}
                 className={clsx(
-                  'rounded-full transition-all',
+                  'inline-flex rounded-full align-middle transition-all',
                   on
                     ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
                     : 'opacity-60 hover:opacity-100',
@@ -674,23 +674,27 @@ function QuickFilterBar({
       {labels.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           <Tag className="h-3.5 w-3.5 text-gray-400" />
-          {labels.map((l) => {
-            const on = filter.labelIds.has(l.id);
-            return (
-              <button
-                key={l.id}
-                onClick={() => toggleLabel(l.id)}
-                className={clsx(
-                  'rounded transition-opacity',
-                  on
-                    ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
-                    : 'opacity-60 hover:opacity-100',
-                )}
-              >
-                <LabelBadge label={l} />
-              </button>
-            );
-          })}
+          {[...labels]
+            .sort(
+              (a, b) =>
+                Number(filter.labelIds.has(b.id)) -
+                Number(filter.labelIds.has(a.id)),
+            )
+            .map((l) => {
+              const on = filter.labelIds.has(l.id);
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => toggleLabel(l.id)}
+                  className={clsx(
+                    'rounded transition-opacity',
+                    !on && 'opacity-60 hover:opacity-100',
+                  )}
+                >
+                  <LabelBadge label={l} checked={on} />
+                </button>
+              );
+            })}
         </div>
       )}
 
