@@ -73,9 +73,9 @@ export function TeamMultiSelect({
           <div
             ref={popoverRef}
             style={{ position: 'fixed', ...coords }}
-            className="z-[60] overflow-hidden rounded-md border border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-800"
+            className="z-[60] flex flex-col overflow-hidden rounded-md border border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-800"
           >
-            <div className="flex items-center gap-2 border-b border-line-soft px-2.5 py-1.5 dark:border-gray-700">
+            <div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-2.5 py-1.5 dark:border-gray-700">
               <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
               <input
                 value={query}
@@ -85,7 +85,7 @@ export function TeamMultiSelect({
                 className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint dark:text-gray-100"
               />
             </div>
-            <div className="max-h-56 overflow-y-auto scrollbar-thin py-1">
+            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin py-1">
               {filtered.map((t) => {
                 const on = value.includes(t.id);
                 return (

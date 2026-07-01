@@ -128,7 +128,7 @@ export function IssueDrawer({
   return createPortal(
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-gray-900/30 dark:bg-black/60" onClick={onClose} aria-hidden />
-      <aside className="absolute right-0 top-0 flex h-full w-[960px] max-w-[90vw] flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
+      <aside className="absolute right-0 top-0 flex h-full w-[1040px] max-w-[95vw] flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
         <DrawerBody
           issueKey={issueKey}
           projectKey={projectKey}
@@ -378,7 +378,7 @@ function DrawerBody({
         </div>
 
         {/* Sidebar fields */}
-        <aside className="w-[300px] shrink-0 space-y-3.5 overflow-y-auto scrollbar-thin px-5 py-5">
+        <aside className="w-[360px] shrink-0 space-y-3.5 overflow-y-auto scrollbar-thin px-5 py-5">
           {errorMsg && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
               {errorMsg}

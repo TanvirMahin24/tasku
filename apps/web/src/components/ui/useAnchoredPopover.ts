@@ -2,18 +2,22 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export interface PopoverCoords {
   left: number;
-  top: number;
   width: number;
+  top?: number; // set when placed below the trigger
+  bottom?: number; // set when placed above the trigger (distance from viewport bottom)
+  maxHeight: number; // space available on the chosen side (popover scrolls within)
 }
 
 /**
  * Anchors a portaled popover to a trigger with `position: fixed`, so it renders
  * above any `overflow` / scroll container (drawers, cards, modals) instead of
  * being clipped. Repositions on scroll/resize and closes on outside click.
+ * `placement` opens it below (default) or above the trigger.
  */
 export function useAnchoredPopover<T extends HTMLElement>(
   open: boolean,
   onClose: () => void,
+  placement: 'top' | 'bottom' = 'bottom',
 ) {
   const triggerRef = useRef<T>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -29,7 +33,24 @@ export function useAnchoredPopover<T extends HTMLElement>(
     }
     const reposition = () => {
       const r = triggerRef.current?.getBoundingClientRect();
-      if (r) setCoords({ left: r.left, top: r.bottom + 4, width: r.width });
+      if (!r) return;
+      const GAP = 4;
+      const MARGIN = 12;
+      setCoords(
+        placement === 'top'
+          ? {
+              left: r.left,
+              width: r.width,
+              bottom: window.innerHeight - r.top + GAP,
+              maxHeight: r.top - GAP - MARGIN,
+            }
+          : {
+              left: r.left,
+              width: r.width,
+              top: r.bottom + GAP,
+              maxHeight: window.innerHeight - r.bottom - GAP - MARGIN,
+            },
+      );
     };
     reposition();
     // capture:true catches scrolls on any ancestor container, not just window.
