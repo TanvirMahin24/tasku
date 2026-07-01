@@ -5,7 +5,7 @@ import { projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { spaceColor } from '@/components/AppLayout';
 
-// Per-space top navigation — mirrors the Task Ache reference: breadcrumb,
+// Per-space top navigation — mirrors the reference design: breadcrumb,
 // space icon + name, then an underline tab strip. Wraps every /projects/:key
 // route so the chrome is defined once.
 const TABS: { to: string; label: string }[] = [

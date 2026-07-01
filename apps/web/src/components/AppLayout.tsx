@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Check,
   Home,
   LayoutGrid,
   LogOut,
@@ -25,7 +24,7 @@ import { NotificationsBell } from '@/components/NotificationsBell';
 import { CommandPalette } from '@/components/CommandPalette';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
 
-// Deterministic per-space accent, matching the Task Ache design palette.
+// Deterministic per-space accent from the reference design palette.
 const SPACE_COLORS = [
   '#0C66E4',
   '#8270DB',
@@ -98,11 +97,9 @@ export function AppLayout() {
         {/* Logo + create */}
         <div className="flex items-center gap-2.5 px-4 py-3.5">
           <Link to="/" className="flex items-center gap-2.5 hover:opacity-90">
-            <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-gradient-to-br from-[#4C9AFF] to-brand-600 text-white shadow-[0_2px_6px_rgba(12,102,228,.4)]">
-              <Check className="h-[15px] w-[15px]" strokeWidth={3.5} />
-            </span>
+            <img src="/logo.svg" alt="Tori" className="h-[26px] w-[26px]" />
             <span className="text-[15px] font-extrabold tracking-[-0.02em] text-ink dark:text-white">
-              Task<span className="text-brand-600">Ache</span>
+              Tori
             </span>
           </Link>
           <button
@@ -110,7 +107,7 @@ export function AppLayout() {
               activeProject ? setCreateOpen(true) : setPaletteOpen(true)
             }
             title="Create issue"
-            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-brand-600 text-white shadow-[0_2px_6px_rgba(12,102,228,.4)] hover:bg-brand-700"
+            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-brand-600 text-white shadow-[0_2px_6px_rgba(232,51,48,.4)] hover:bg-brand-700"
           >
             <Plus className="h-4 w-4" strokeWidth={2.6} />
           </button>

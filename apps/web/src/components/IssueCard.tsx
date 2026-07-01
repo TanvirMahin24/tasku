@@ -21,7 +21,7 @@ export function IssueCardContent({
       className={clsx(
         'group flex flex-col gap-[9px] rounded-lg border border-line bg-white p-[10px] shadow-card transition-shadow dark:border-gray-700 dark:bg-gray-800',
         dragging
-          ? 'shadow-raise ring-2 ring-[#4C9AFF]'
+          ? 'shadow-raise ring-2 ring-brand-300'
           : 'hover:border-[#B3B9C4] dark:hover:border-gray-600',
       )}
     >

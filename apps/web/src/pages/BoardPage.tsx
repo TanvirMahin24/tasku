@@ -855,7 +855,7 @@ function BoardColumn({
       className={clsx(
         'flex w-72 shrink-0 flex-col rounded-[10px] bg-surface-sunken transition-colors dark:bg-gray-900/70',
         laned ? 'min-h-[7rem]' : 'h-full',
-        isOver && 'bg-brand-50 ring-2 ring-[#4C9AFF] dark:bg-brand-500/10',
+        isOver && 'bg-brand-50 ring-2 ring-brand-300 dark:bg-brand-500/10',
       )}
     >
       <div className="flex items-center justify-between rounded-t-[10px] px-3 py-2.5">
