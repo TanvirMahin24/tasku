@@ -165,6 +165,8 @@ export function toCommentDto(c: any): CommentDto {
     author: toUserDto(c.author),
     createdAt: iso(c.createdAt),
     updatedAt: iso(c.updatedAt),
+    parentId: c.parentId ?? null,
+    ...(c.replies ? { replies: c.replies.map(toCommentDto) } : {}),
   };
 }
 

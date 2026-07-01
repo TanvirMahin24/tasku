@@ -20,6 +20,7 @@ import {
   toIssueDetailDto,
   toIssueSummaryDto,
 } from '../common/mappers';
+import { userMentionIdsFromDoc } from '../common/mentions.util';
 import { rankAfter, rankBetween } from '../common/rank.util';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
@@ -688,6 +689,31 @@ export class IssuesService {
 
     // --- Labels (replace the whole set) ---
     const labelsChanged = dto.labelIds !== undefined;
+
+    // --- @mentions in the description -> MENTIONED (project members only) ---
+    if (
+      dto.description !== undefined &&
+      dto.description !== existing.description
+    ) {
+      const ids = userMentionIdsFromDoc(dto.description);
+      if (ids.length) {
+        const already = new Set(notifications.map((n) => n.recipientId));
+        const members = await this.prisma.projectMember.findMany({
+          where: { projectId: existing.projectId, userId: { in: ids } },
+          select: { userId: true },
+        });
+        for (const m of members) {
+          if (m.userId === userId || already.has(m.userId)) continue;
+          already.add(m.userId);
+          notifications.push({
+            recipientId: m.userId,
+            type: NotificationType.MENTIONED,
+            issueKey: existing.key,
+            message: `You were mentioned on ${existing.key}`,
+          });
+        }
+      }
+    }
 
     // Fan out to watchers (de-duped against existing recipients, excl. actor).
     if (watcherNotify) {

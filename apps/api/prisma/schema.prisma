@@ -275,12 +275,18 @@ model Comment {
   id        String   @id @default(cuid())
   issueId   String
   authorId  String
+  parentId  String? // one-level reply thread (a reply's parent is a top-level comment)
   body      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author User  @relation(fields: [authorId], references: [id])
+  issue   Issue     @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author  User      @relation(fields: [authorId], references: [id])
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([issueId])
+  @@index([parentId])
 }
 
 model Attachment {

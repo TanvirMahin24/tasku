@@ -25,6 +25,7 @@ import type {
   CustomFieldDefDto,
   KnowledgeDocDto,
   ImportableKnowledgeDocDto,
+  MentionableDto,
   CustomFieldValue,
   DashboardDto,
   UpdateVersionDto,
@@ -487,6 +488,19 @@ export async function fetchKnowledgeBlobUrl(id: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Mentions
+// ---------------------------------------------------------------------------
+
+export const mentionsApi = {
+  search: (projectKey: string, q: string) =>
+    api
+      .get<MentionableDto[]>(`/projects/${projectKey}/mentionables`, {
+        params: q ? { q } : undefined,
+      })
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------
 
@@ -549,6 +563,8 @@ export const commentsApi = {
     api
       .post<CommentDto>(`/issues/${issueKey}/comments`, dto)
       .then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/comments/${id}`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

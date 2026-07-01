@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../common/membership.service';
 import { EventsService } from '../events/events.service';
 import { toCommentDto } from '../common/mappers';
+import { userMentionIdsFromText } from '../common/mentions.util';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
 @Injectable()
@@ -21,12 +23,24 @@ export class CommentsService {
 
   async list(issueKey: string, userId: string): Promise<CommentDto[]> {
     const issue = await this.membership.getIssueForMember(issueKey, userId);
-    const comments = await this.prisma.comment.findMany({
+    const all = await this.prisma.comment.findMany({
       where: { issueId: issue.id },
       include: { author: true },
       orderBy: { createdAt: 'asc' },
     });
-    return comments.map(toCommentDto);
+    // Group into one-level threads: top-level comments each carry their replies.
+    const repliesByParent = new Map<string, typeof all>();
+    for (const c of all) {
+      if (!c.parentId) continue;
+      const arr = repliesByParent.get(c.parentId) ?? [];
+      arr.push(c);
+      repliesByParent.set(c.parentId, arr);
+    }
+    return all
+      .filter((c) => !c.parentId)
+      .map((top) =>
+        toCommentDto({ ...top, replies: repliesByParent.get(top.id) ?? [] }),
+      );
   }
 
   async create(
@@ -40,12 +54,28 @@ export class CommentsService {
       select: { key: true },
     });
 
+    // One-level threads: a reply attaches to a top-level comment. Replying to a
+    // reply collapses onto its parent thread.
+    let parentId: string | null = null;
+    let threadAuthorId: string | null = null;
+    if (dto.parentId) {
+      const parent = await this.prisma.comment.findUnique({
+        where: { id: dto.parentId },
+        select: { id: true, issueId: true, parentId: true, authorId: true },
+      });
+      if (!parent || parent.issueId !== issue.id) {
+        throw new BadRequestException('Parent comment does not belong to this issue');
+      }
+      parentId = parent.parentId ?? parent.id;
+      threadAuthorId = parent.authorId;
+    }
+
     const mentionedIds = await this.resolveMentions(dto.body, issue.projectId);
     const notifiedIds: string[] = [];
 
     const created = await this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
-        data: { issueId: issue.id, authorId: userId, body: dto.body },
+        data: { issueId: issue.id, authorId: userId, body: dto.body, parentId },
         include: { author: true },
       });
 
@@ -59,13 +89,17 @@ export class CommentsService {
         },
       });
 
-      // COMMENTED -> reporter + assignee + watchers (de-duped, excl. author).
+      // COMMENTED -> reporter + assignee + watchers + (for a reply) the thread
+      // author, de-duped and excluding the author.
       const commentedRecipients = new Set<string>();
       if (issue.reporterId && issue.reporterId !== userId) {
         commentedRecipients.add(issue.reporterId);
       }
       if (issue.assigneeId && issue.assigneeId !== userId) {
         commentedRecipients.add(issue.assigneeId);
+      }
+      if (threadAuthorId && threadAuthorId !== userId) {
+        commentedRecipients.add(threadAuthorId);
       }
       const watchers = await tx.watcher.findMany({
         where: { issueId: issue.id },
@@ -135,44 +169,19 @@ export class CommentsService {
   }
 
   /**
-   * Resolve @mentions to user ids. Supports two forms:
-   *  - rich: `@[Display Name](userId)`  -> the captured userId (if a project member)
-   *  - plain: `@DisplayName`            -> matched against project members' displayNames
-   * Returns a de-duplicated Set of member user ids.
+   * Resolve user @mentions in a body (token form `@[Name](mention:user:id)`) to
+   * a de-duplicated Set of ids, keeping only actual project members.
    */
   private async resolveMentions(
     body: string,
     projectId: string,
   ): Promise<Set<string>> {
-    const result = new Set<string>();
-
-    // Project members are the only valid mention targets.
+    const ids = userMentionIdsFromText(body);
+    if (!ids.length) return new Set();
     const members = await this.prisma.projectMember.findMany({
-      where: { projectId },
-      include: { user: true },
+      where: { projectId, userId: { in: ids } },
+      select: { userId: true },
     });
-    const byId = new Map(members.map((m) => [m.userId, m.user]));
-    const byName = new Map(
-      members.map((m) => [m.user.displayName.toLowerCase(), m.userId]),
-    );
-
-    // 1) rich mentions: @[Name](id)
-    const richRe = /@\[[^\]]+\]\(([^)]+)\)/g;
-    let match: RegExpExecArray | null;
-    while ((match = richRe.exec(body)) !== null) {
-      const id = match[1];
-      if (byId.has(id)) result.add(id);
-    }
-
-    // 2) plain mentions: @Name (longest member names first so multi-word wins).
-    const names = [...byName.keys()].sort((a, b) => b.length - a.length);
-    const lowerBody = body.toLowerCase();
-    for (const name of names) {
-      if (lowerBody.includes(`@${name}`)) {
-        result.add(byName.get(name)!);
-      }
-    }
-
-    return result;
+    return new Set(members.map((m) => m.userId));
   }
 }

@@ -125,6 +125,23 @@ export interface CommentDto {
   author: UserDto;
   createdAt: string;
   updatedAt: string;
+  parentId: string | null;
+  // Present on top-level comments (one-level threads); replies omit it.
+  replies?: CommentDto[];
+}
+
+// ---------------------------------------------------------------------------
+// Mentions (@-mentions in descriptions, comments, replies)
+// ---------------------------------------------------------------------------
+
+export type MentionType = 'user' | 'issue' | 'knowledge' | 'board';
+
+/** A single @-mentionable entity returned by the picker. */
+export interface MentionableDto {
+  type: MentionType;
+  id: string;
+  label: string; // primary text (name / issue key / doc title / board name)
+  sublabel?: string | null; // email / issue title / doc kind / etc.
 }
 
 export interface ActivityDto {
@@ -678,6 +695,8 @@ export interface MoveIssueDto {
 
 export interface CreateCommentDto {
   body: string;
+  // Set to reply to a top-level comment (one-level threads).
+  parentId?: string | null;
 }
 
 export interface CreateSprintDto {

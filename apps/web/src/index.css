@@ -55,6 +55,14 @@
   }
 }
 
+@layer components {
+  /* Placeholder for the contentEditable mention input (MentionInput). */
+  .ta-mention-input.is-empty::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none text-gray-400 dark:text-gray-500;
+  }
+}
+
 @layer utilities {
   /* Thin, subtle scrollbars for board columns & drawers. */
   .scrollbar-thin {

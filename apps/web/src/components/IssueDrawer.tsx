@@ -17,7 +17,6 @@ import {
   ListPlus,
   Paperclip,
   Plus,
-  Send,
   Trash2,
   X,
 } from 'lucide-react';
@@ -70,6 +69,9 @@ import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { IssueTypeIcon } from '@/components/ui/icons';
 import { KnowledgeBase } from '@/components/KnowledgeBase';
+import { MentionInput } from '@/components/mentions/MentionInput';
+import { MentionText } from '@/components/mentions/MentionText';
+import { useAuthStore } from '@/store/auth';
 
 /** Smooth-scroll a labelled section into view within the drawer's main column. */
 function scrollToSection(id: string) {
@@ -327,6 +329,7 @@ function DrawerBody({
             <DescriptionEditor
               key={issue.id}
               value={issue.description}
+              projectKey={projectKey}
               onSave={(json) => patch({ description: json })}
             />
           </Section>
@@ -361,7 +364,11 @@ function DrawerBody({
           </Section>
 
           <Section label="Comments">
-            <CommentsPanel issueKey={issue.key} comments={issue.comments} />
+            <CommentsPanel
+              issueKey={issue.key}
+              projectKey={projectKey}
+              comments={issue.comments}
+            />
           </Section>
 
           <Section label="Activity">
@@ -529,77 +536,196 @@ function DrawerBody({
 
 function CommentsPanel({
   issueKey,
+  projectKey,
   comments,
 }: {
   issueKey: string;
+  projectKey: string;
   comments: CommentDto[];
 }) {
   const queryClient = useQueryClient();
-  const [body, setBody] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
+    queryClient.invalidateQueries({ queryKey: qk.comments(issueKey) });
+  };
   const add = useMutation({
-    mutationFn: (text: string) => commentsApi.create(issueKey, { body: text }),
+    mutationFn: (v: { body: string; parentId?: string | null }) =>
+      commentsApi.create(issueKey, v),
     onSuccess: () => {
-      setBody('');
-      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
-      queryClient.invalidateQueries({ queryKey: qk.comments(issueKey) });
+      setReplyTo(null);
+      invalidate();
     },
   });
+  const remove = useMutation({
+    mutationFn: (id: string) => commentsApi.remove(id),
+    onSuccess: invalidate,
+  });
+
+  // Group flat comments into one-level threads.
+  const tops = comments.filter((c) => !c.parentId);
+  const repliesByParent = new Map<string, CommentDto[]>();
+  for (const c of comments) {
+    if (!c.parentId) continue;
+    const arr = repliesByParent.get(c.parentId) ?? [];
+    arr.push(c);
+    repliesByParent.set(c.parentId, arr);
+  }
 
   return (
     <div className="space-y-4">
-      {comments.length > 0 && (
-        <ul className="space-y-3">
-          {comments.map((c) => (
-            <li key={c.id} className="flex gap-2.5">
-              <Avatar user={c.author} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-ink dark:text-gray-100">
-                    {c.author.displayName}
-                  </span>
-                  <span className="text-xs text-ink-faint">
-                    {relativeTime(c.createdAt)}
-                  </span>
-                </div>
-                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-soft dark:bg-gray-800 dark:text-gray-200">
-                  {c.body}
-                </p>
-              </div>
-            </li>
-          ))}
+      {tops.length > 0 && (
+        <ul className="space-y-4">
+          {tops.map((c) => {
+            const replies = repliesByParent.get(c.id) ?? [];
+            return (
+              <li key={c.id} className="space-y-2">
+                <CommentItem
+                  comment={c}
+                  projectKey={projectKey}
+                  onDelete={() => remove.mutate(c.id)}
+                  onReply={() =>
+                    setReplyTo((v) => (v === c.id ? null : c.id))
+                  }
+                />
+                {(replies.length > 0 || replyTo === c.id) && (
+                  <div className="ml-9 space-y-2 border-l border-line-soft pl-3 dark:border-gray-700">
+                    {replies.map((r) => (
+                      <CommentItem
+                        key={r.id}
+                        comment={r}
+                        projectKey={projectKey}
+                        onDelete={() => remove.mutate(r.id)}
+                      />
+                    ))}
+                    {replyTo === c.id && (
+                      <Composer
+                        projectKey={projectKey}
+                        placeholder="Reply…  (@ to mention)"
+                        submitLabel="Reply"
+                        autoFocus
+                        onSubmit={(text) =>
+                          add.mutateAsync({ body: text, parentId: c.id })
+                        }
+                        onCancel={() => setReplyTo(null)}
+                      />
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (body.trim()) add.mutate(body.trim());
-        }}
-        className="flex items-end gap-2"
-      >
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && body.trim()) {
-              e.preventDefault();
-              add.mutate(body.trim());
-            }
-          }}
-          placeholder="Add a comment…  (⌘/Ctrl + Enter to send)"
-          className={`${inputClass} min-h-[60px] resize-y`}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          loading={add.isPending}
-          disabled={!body.trim()}
-          className="h-9"
-        >
-          <Send className="h-3.5 w-3.5" />
+      <Composer
+        projectKey={projectKey}
+        submitLabel="Comment"
+        onSubmit={(text) => add.mutateAsync({ body: text })}
+      />
+    </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  projectKey,
+  onDelete,
+  onReply,
+}: {
+  comment: CommentDto;
+  projectKey: string;
+  onDelete: () => void;
+  onReply?: () => void;
+}) {
+  const myId = useAuthStore((s) => s.user?.id);
+  const mine = comment.author.id === myId;
+  return (
+    <div className="group flex gap-2.5">
+      <Avatar user={comment.author} size="sm" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-medium text-ink dark:text-gray-100">
+            {comment.author.displayName}
+          </span>
+          <span className="text-xs text-ink-faint">
+            {relativeTime(comment.createdAt)}
+          </span>
+          {mine && (
+            <button
+              onClick={onDelete}
+              title="Delete"
+              className="ml-auto text-ink-faint opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="mt-0.5 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-soft dark:bg-gray-800 dark:text-gray-200">
+          <MentionText body={comment.body} projectKey={projectKey} />
+        </div>
+        {onReply && (
+          <button
+            onClick={onReply}
+            className="mt-1 text-xs font-medium text-ink-faint hover:text-brand-600"
+          >
+            Reply
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Composer({
+  projectKey,
+  placeholder,
+  submitLabel,
+  autoFocus,
+  onSubmit,
+  onCancel,
+}: {
+  projectKey: string;
+  placeholder?: string;
+  submitLabel: string;
+  autoFocus?: boolean;
+  onSubmit: (text: string) => Promise<unknown>;
+  onCancel?: () => void;
+}) {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    const text = value.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      await onSubmit(text);
+      setValue('');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <MentionInput
+        value={value}
+        onChange={setValue}
+        onSubmit={submit}
+        projectKey={projectKey}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+      />
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={submit} loading={busy} disabled={!value.trim()}>
+          {submitLabel}
         </Button>
-      </form>
+        {onCancel && (
+          <Button size="sm" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

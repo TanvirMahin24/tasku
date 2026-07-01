@@ -48,4 +48,7 @@ export const qk = {
     ['issue', issueKey, 'knowledge'] as const,
   importableKnowledge: (search: string) =>
     ['knowledge', 'importable', search] as const,
+
+  mentionables: (projectKey: string, q: string) =>
+    ['project', projectKey, 'mentionables', q] as const,
 };
