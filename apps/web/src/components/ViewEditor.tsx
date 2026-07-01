@@ -38,6 +38,30 @@ const STATUS_CATEGORIES: { value: StatusCategory; label: string }[] = [
   { value: 'DONE', label: 'Done' },
 ];
 
+// Filter-builder fields — each maps to a key on IssueFilterCriteria.
+type FilterField =
+  | 'text'
+  | 'projectKey'
+  | 'types'
+  | 'priorities'
+  | 'statusCategories'
+  | 'teamIds'
+  | 'assigneeIds';
+
+const FILTER_FIELDS: { field: FilterField; label: string }[] = [
+  { field: 'text', label: 'Text' },
+  { field: 'projectKey', label: 'Space' },
+  { field: 'types', label: 'Type' },
+  { field: 'priorities', label: 'Priority' },
+  { field: 'statusCategories', label: 'Status' },
+  { field: 'teamIds', label: 'Team' },
+  { field: 'assigneeIds', label: 'Assignee' },
+];
+
+function hasValue(v: unknown): boolean {
+  return Array.isArray(v) ? v.length > 0 : v != null && v !== '';
+}
+
 function toInput(iso: string | null): string {
   return iso ? iso.slice(0, 10) : '';
 }
@@ -64,6 +88,9 @@ export function ViewEditor({
   const [columns, setColumns] = useState<ViewColumn[]>(view.columns);
   const [addKey, setAddKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [activeFields, setActiveFields] = useState<FilterField[]>(() =>
+    FILTER_FIELDS.map((f) => f.field).filter((f) => hasValue(view.criteria[f])),
+  );
 
   const { data: teams = [] } = useQuery({ queryKey: qk.teams, queryFn: teamsApi.list });
   const { data: users = [] } = useQuery({ queryKey: qk.users, queryFn: usersApi.list });
@@ -186,76 +213,156 @@ export function ViewEditor({
           </div>
         </Section>
 
-        {/* Filters */}
+        {/* Filters — condition builder */}
         <Section title="Filters">
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Text">
-                <input
-                  value={criteria.text ?? ''}
-                  onChange={(e) => setCrit('text', e.target.value || undefined)}
-                  placeholder="Key or title contains…"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Space">
-                <Select
-                  value={criteria.projectKey ?? ''}
-                  onChange={(e) =>
-                    setCrit('projectKey', e.target.value || undefined)
-                  }
-                  placeholder="All spaces"
-                  options={projects.map((p) => ({ value: p.key, label: p.name }))}
-                />
-              </Field>
-            </div>
-            <ChipRow label="Type">
-              {ISSUE_TYPES.map((t) => (
-                <Chip
-                  key={t}
-                  on={(criteria.types ?? []).includes(t)}
-                  onClick={() => setCrit('types', toggle(criteria.types, t) as IssueType[])}
+          <div className="space-y-2">
+            {activeFields.length === 0 && (
+              <p className="text-xs text-ink-faint">
+                No conditions — the view shows every issue you can access.
+              </p>
+            )}
+            {activeFields.map((f) => (
+              <div
+                key={f}
+                className="flex items-start gap-2 rounded-md border border-line bg-white p-2 dark:border-gray-700 dark:bg-gray-900"
+              >
+                <span className="mt-1.5 w-16 shrink-0 text-xs font-medium text-ink-soft dark:text-gray-300">
+                  {FILTER_FIELDS.find((x) => x.field === f)!.label}
+                </span>
+                <span className="mt-1.5 shrink-0 text-[11px] text-ink-faint">
+                  {f === 'text' ? 'contains' : 'is'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  {f === 'text' && (
+                    <input
+                      value={criteria.text ?? ''}
+                      onChange={(e) => setCrit('text', e.target.value || undefined)}
+                      placeholder="Key or title…"
+                      className={inputClass}
+                    />
+                  )}
+                  {f === 'projectKey' && (
+                    <Select
+                      value={criteria.projectKey ?? ''}
+                      onChange={(e) =>
+                        setCrit('projectKey', e.target.value || undefined)
+                      }
+                      placeholder="Any space"
+                      options={projects.map((p) => ({ value: p.key, label: p.name }))}
+                    />
+                  )}
+                  {f === 'types' && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {ISSUE_TYPES.map((t) => (
+                        <Chip
+                          key={t}
+                          on={(criteria.types ?? []).includes(t)}
+                          onClick={() =>
+                            setCrit('types', toggle(criteria.types, t) as IssueType[])
+                          }
+                        >
+                          {ISSUE_TYPE_META[t].label}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  {f === 'priorities' && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {PRIORITIES.map((p) => (
+                        <Chip
+                          key={p}
+                          on={(criteria.priorities ?? []).includes(p)}
+                          onClick={() =>
+                            setCrit(
+                              'priorities',
+                              toggle(criteria.priorities, p) as Priority[],
+                            )
+                          }
+                        >
+                          {PRIORITY_META[p].label}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  {f === 'statusCategories' && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {STATUS_CATEGORIES.map((s) => (
+                        <Chip
+                          key={s.value}
+                          on={(criteria.statusCategories ?? []).includes(s.value)}
+                          onClick={() =>
+                            setCrit(
+                              'statusCategories',
+                              toggle(
+                                criteria.statusCategories,
+                                s.value,
+                              ) as StatusCategory[],
+                            )
+                          }
+                        >
+                          {s.label}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  {f === 'teamIds' && (
+                    <TeamMultiSelect
+                      teams={teams}
+                      value={criteria.teamIds ?? []}
+                      onChange={(ids) =>
+                        setCrit('teamIds', ids.length ? ids : undefined)
+                      }
+                    />
+                  )}
+                  {f === 'assigneeIds' && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {users.map((u) => (
+                        <Chip
+                          key={u.id}
+                          on={(criteria.assigneeIds ?? []).includes(u.id)}
+                          onClick={() =>
+                            setCrit(
+                              'assigneeIds',
+                              toggle(criteria.assigneeIds, u.id) as string[],
+                            )
+                          }
+                        >
+                          {u.displayName}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setActiveFields((a) => a.filter((x) => x !== f));
+                    setCrit(f, undefined);
+                  }}
+                  title="Remove condition"
+                  className="mt-1 shrink-0 text-ink-faint hover:text-red-600"
                 >
-                  {ISSUE_TYPE_META[t].label}
-                </Chip>
-              ))}
-            </ChipRow>
-            <ChipRow label="Priority">
-              {PRIORITIES.map((p) => (
-                <Chip
-                  key={p}
-                  on={(criteria.priorities ?? []).includes(p)}
-                  onClick={() =>
-                    setCrit('priorities', toggle(criteria.priorities, p) as Priority[])
-                  }
-                >
-                  {PRIORITY_META[p].label}
-                </Chip>
-              ))}
-            </ChipRow>
-            <ChipRow label="Status">
-              {STATUS_CATEGORIES.map((s) => (
-                <Chip
-                  key={s.value}
-                  on={(criteria.statusCategories ?? []).includes(s.value)}
-                  onClick={() =>
-                    setCrit(
-                      'statusCategories',
-                      toggle(criteria.statusCategories, s.value) as StatusCategory[],
-                    )
-                  }
-                >
-                  {s.label}
-                </Chip>
-              ))}
-            </ChipRow>
-            <Field label="Teams" full>
-              <TeamMultiSelect
-                teams={teams}
-                value={criteria.teamIds ?? []}
-                onChange={(ids) => setCrit('teamIds', ids.length ? ids : undefined)}
-              />
-            </Field>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            {FILTER_FIELDS.some((x) => !activeFields.includes(x.field)) && (
+              <div className="pt-1">
+                <div className="max-w-[220px]">
+                  <Select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value)
+                        setActiveFields((a) => [...a, e.target.value as FilterField]);
+                    }}
+                    placeholder="+ Add condition…"
+                    options={FILTER_FIELDS.filter(
+                      (x) => !activeFields.includes(x.field),
+                    ).map((x) => ({ value: x.field, label: x.label }))}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 
@@ -393,17 +500,6 @@ function Field({
       </span>
       {children}
     </label>
-  );
-}
-
-function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <span className="mb-1 block text-xs font-medium text-ink-soft dark:text-gray-300">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </div>
   );
 }
 

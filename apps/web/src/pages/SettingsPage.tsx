@@ -28,6 +28,7 @@ import {
   Settings2,
   Shield,
   SlidersHorizontal,
+  Tags,
   Trash2,
   Users as UsersIcon,
   Workflow,
@@ -36,6 +37,7 @@ import clsx from 'clsx';
 import {
   CUSTOM_FIELD_TYPES,
   type ComponentDto,
+  type LabelDto,
   type CustomFieldDefDto,
   type CustomFieldType,
   type Role,
@@ -56,15 +58,23 @@ import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Select, inputClass } from '@/components/ui/Select';
+import { LabelBadge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/PageHeader';
 
-type Tab = 'general' | 'workflow' | 'fields' | 'components' | 'members';
+type Tab =
+  | 'general'
+  | 'workflow'
+  | 'fields'
+  | 'labels'
+  | 'components'
+  | 'members';
 
 const TABS: { id: Tab; label: string; icon: typeof Workflow }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
   { id: 'workflow', label: 'Columns & workflow', icon: Workflow },
   { id: 'fields', label: 'Custom fields', icon: SlidersHorizontal },
+  { id: 'labels', label: 'Labels', icon: Tags },
   { id: 'components', label: 'Components', icon: ComponentIcon },
   { id: 'members', label: 'Members', icon: UsersIcon },
 ];
@@ -151,6 +161,7 @@ export default function SettingsPage() {
               {tab === 'general' && <GeneralTab projectKey={key} />}
               {tab === 'workflow' && <WorkflowTab projectKey={key} />}
               {tab === 'fields' && <CustomFieldsTab projectKey={key} />}
+              {tab === 'labels' && <LabelsTab projectKey={key} />}
               {tab === 'components' && <ComponentsTab projectKey={key} />}
               {tab === 'members' && <MembersTab projectKey={key} />}
             </div>
@@ -519,6 +530,197 @@ function AddStatusForm({
         <Plus className="h-4 w-4" /> Add
       </Button>
     </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Labels tab
+// ---------------------------------------------------------------------------
+
+const LABEL_COLORS = [
+  '#6b7280',
+  '#ef4444',
+  '#f59e0b',
+  '#eab308',
+  '#22c55e',
+  '#0C66E4',
+  '#8270DB',
+  '#ec4899',
+  '#14b8a6',
+  '#0ea5e9',
+];
+
+function ColorSwatches({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (c: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {LABEL_COLORS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onChange(c)}
+          className={clsx(
+            'h-5 w-5 rounded-full ring-offset-1 transition-all',
+            value.toLowerCase() === c.toLowerCase()
+              ? 'ring-2 ring-brand-600 ring-offset-white dark:ring-offset-gray-900'
+              : 'hover:scale-110',
+          )}
+          style={{ backgroundColor: c }}
+          aria-label={c}
+        />
+      ))}
+    </div>
+  );
+}
+
+function LabelsTab({ projectKey }: { projectKey: string }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(LABEL_COLORS[5]);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: labels = [], isLoading } = useQuery({
+    queryKey: qk.labels(projectKey),
+    queryFn: () => projectsApi.labels(projectKey),
+    enabled: !!projectKey,
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: qk.labels(projectKey) });
+
+  const create = useMutation({
+    mutationFn: () => projectsApi.createLabel(projectKey, { name: name.trim(), color }),
+    onSuccess: () => {
+      setName('');
+      invalidate();
+    },
+    onError: (err) => setError(apiErrorMessage(err, 'Could not add label')),
+  });
+
+  if (isLoading) return <PageSpinner label="Loading labels…" />;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold text-ink dark:text-gray-100">
+          Labels
+        </h2>
+        <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
+          Reusable tags to categorize issues across boards and views.
+        </p>
+      </div>
+
+      {error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </p>
+      )}
+
+      {labels.length === 0 ? (
+        <p className="text-sm text-ink-faint">No labels yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {labels.map((l) => (
+            <LabelRow
+              key={l.id}
+              label={l}
+              projectKey={projectKey}
+              onError={setError}
+            />
+          ))}
+        </ul>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          if (name.trim()) create.mutate();
+        }}
+        className="space-y-2.5 rounded-lg border border-dashed border-line p-3 dark:border-gray-700"
+      >
+        <div className="flex items-center gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New label name…"
+            className={`${inputClass} h-9 flex-1`}
+          />
+          <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </div>
+        <ColorSwatches value={color} onChange={setColor} />
+      </form>
+    </div>
+  );
+}
+
+function LabelRow({
+  label,
+  projectKey,
+  onError,
+}: {
+  label: LabelDto;
+  projectKey: string;
+  onError: (msg: string | null) => void;
+}) {
+  const queryClient = useQueryClient();
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: qk.labels(projectKey) });
+
+  const update = useMutation({
+    mutationFn: (dto: { name?: string; color?: string }) =>
+      projectsApi.updateLabel(label.id, dto),
+    onSuccess: invalidate,
+    onError: (err) => onError(apiErrorMessage(err, 'Could not update label')),
+  });
+  const remove = useMutation({
+    mutationFn: () => projectsApi.deleteLabel(label.id),
+    onSuccess: invalidate,
+    onError: (err) => onError(apiErrorMessage(err, 'Could not delete label')),
+  });
+
+  return (
+    <li className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-white p-2.5 shadow-card dark:border-gray-700 dark:bg-gray-900">
+      <LabelBadge label={label} />
+      <input
+        defaultValue={label.name}
+        key={label.name}
+        onBlur={(e) => {
+          onError(null);
+          const next = e.target.value.trim();
+          if (next && next !== label.name) update.mutate({ name: next });
+          else if (!next) e.target.value = label.name;
+        }}
+        className={`${inputClass} h-9 w-40`}
+        aria-label="Label name"
+      />
+      <ColorSwatches
+        value={label.color}
+        onChange={(c) => {
+          onError(null);
+          update.mutate({ color: c });
+        }}
+      />
+      <button
+        onClick={() => {
+          if (confirm(`Delete label "${label.name}"?`)) {
+            onError(null);
+            remove.mutate();
+          }
+        }}
+        title="Delete label"
+        className="ml-auto flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </li>
   );
 }
 

@@ -901,3 +901,8 @@ export const VIEW_DEFAULT_COLUMNS: ViewColumn[] = [
   { key: 'dueDate' },
   { key: 'project' },
 ];
+
+export interface UpdateLabelDto {
+  name?: string;
+  color?: string;
+}

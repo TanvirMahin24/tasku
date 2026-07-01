@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
@@ -30,6 +30,7 @@ import { Badge, LabelBadge } from '@/components/ui/Badge';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { IssueTypeIcon } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
+import { IssueDrawer } from '@/components/IssueDrawer';
 import { ViewEditor } from '@/components/ViewEditor';
 
 const COL_WIDTH: Record<string, number> = {
@@ -55,6 +56,10 @@ export default function ViewPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [openIssue, setOpenIssue] = useState<{
+    issueKey: string;
+    projectKey: string;
+  } | null>(null);
 
   const { data: view, isLoading, error } = useQuery({
     queryKey: qk.view(id),
@@ -269,7 +274,16 @@ export default function ViewPage() {
                         c.pinned ? 'z-[1]' : ''
                       }`}
                     >
-                      <Cell row={row} colKey={c.key} />
+                      <Cell
+                        row={row}
+                        colKey={c.key}
+                        onOpen={() =>
+                          setOpenIssue({
+                            issueKey: row.key,
+                            projectKey: row.projectKey,
+                          })
+                        }
+                      />
                     </td>
                   ))}
                 </tr>
@@ -296,11 +310,30 @@ export default function ViewPage() {
           onClose={() => setEditing(false)}
         />
       )}
+
+      <IssueDrawer
+        projectKey={openIssue?.projectKey ?? ''}
+        issueKey={openIssue?.issueKey ?? null}
+        open={!!openIssue}
+        onClose={() => setOpenIssue(null)}
+        onDeleted={() => {
+          setOpenIssue(null);
+          qc.invalidateQueries({ queryKey: qk.viewResults(id) });
+        }}
+      />
     </>
   );
 }
 
-function Cell({ row, colKey }: { row: ViewRowDto; colKey: string }) {
+function Cell({
+  row,
+  colKey,
+  onOpen,
+}: {
+  row: ViewRowDto;
+  colKey: string;
+  onOpen: () => void;
+}) {
   if (colKey.startsWith('cf:')) {
     return <CfValue value={row.customValues[colKey.slice(3)] ?? null} />;
   }
@@ -308,12 +341,13 @@ function Cell({ row, colKey }: { row: ViewRowDto; colKey: string }) {
   switch (colKey) {
     case 'key':
       return (
-        <Link
-          to={`/issues/${row.key}`}
-          className="font-mono text-[12px] text-brand-600 hover:underline"
+        <button
+          onClick={onOpen}
+          className="flex items-center gap-1.5 font-mono text-[12px] text-brand-600 hover:underline"
         >
+          <IssueTypeIcon type={row.type} />
           {row.key}
-        </Link>
+        </button>
       );
     case 'type':
       return (
@@ -324,13 +358,13 @@ function Cell({ row, colKey }: { row: ViewRowDto; colKey: string }) {
       );
     case 'title':
       return (
-        <Link
-          to={`/issues/${row.key}`}
-          className="line-clamp-1 text-ink hover:text-brand-700 dark:text-gray-100"
+        <button
+          onClick={onOpen}
+          className="line-clamp-1 text-left text-ink hover:text-brand-700 dark:text-gray-100"
           title={row.title}
         >
           {row.title}
-        </Link>
+        </button>
       );
     case 'status':
       return row.status ? (

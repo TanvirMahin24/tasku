@@ -173,6 +173,10 @@ export const projectsApi = {
     api.get<LabelDto[]>(`/projects/${key}/labels`).then((r) => r.data),
   createLabel: (key: string, dto: { name: string; color: string }) =>
     api.post<LabelDto>(`/projects/${key}/labels`, dto).then((r) => r.data),
+  updateLabel: (id: string, dto: { name?: string; color?: string }) =>
+    api.patch<LabelDto>(`/labels/${id}`, dto).then((r) => r.data),
+  deleteLabel: (id: string) =>
+    api.delete<void>(`/labels/${id}`).then((r) => r.data),
   members: (key: string) =>
     api
       .get<ProjectMemberDto[]>(`/projects/${key}/members`)

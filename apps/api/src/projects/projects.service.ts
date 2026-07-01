@@ -30,6 +30,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateLabelDto } from './dto/create-label.dto';
+import { UpdateLabelDto } from './dto/update-label.dto';
 import { CreateStatusDto } from './dto/create-status.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderStatusesDto } from './dto/reorder-statuses.dto';
@@ -541,6 +542,40 @@ export class ProjectsService {
       },
     });
     return toLabelDto(label);
+  }
+
+  async updateLabel(
+    id: string,
+    dto: UpdateLabelDto,
+    userId: string,
+  ): Promise<LabelDto> {
+    const label = await this.prisma.label.findUnique({ where: { id } });
+    if (!label) throw new NotFoundException(`Label ${id} not found`);
+    await this.membership.requireAdmin(label.projectId, userId);
+
+    if (dto.name && dto.name !== label.name) {
+      const clash = await this.prisma.label.findUnique({
+        where: { projectId_name: { projectId: label.projectId, name: dto.name } },
+      });
+      if (clash) throw new ConflictException(`Label "${dto.name}" already exists`);
+    }
+
+    const updated = await this.prisma.label.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.color !== undefined ? { color: dto.color } : {}),
+      },
+    });
+    return toLabelDto(updated);
+  }
+
+  async deleteLabel(id: string, userId: string): Promise<{ success: boolean }> {
+    const label = await this.prisma.label.findUnique({ where: { id } });
+    if (!label) throw new NotFoundException(`Label ${id} not found`);
+    await this.membership.requireAdmin(label.projectId, userId);
+    await this.prisma.label.delete({ where: { id } });
+    return { success: true };
   }
 
   // --- Sprints (listing only; lifecycle lives in SprintsService) -------------

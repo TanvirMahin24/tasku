@@ -6,10 +6,11 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import type { ComponentDto, StatusDto } from '@tasku/types';
+import type { ComponentDto, LabelDto, StatusDto } from '@tasku/types';
 import { ProjectsService } from './projects.service';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
+import { UpdateLabelDto } from './dto/update-label.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 
@@ -52,5 +53,20 @@ export class ProjectSettingsController {
   @Delete('components/:id')
   deleteComponent(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.projects.deleteComponent(id, user.id);
+  }
+
+  // --- Labels ---
+  @Patch('labels/:id')
+  updateLabel(
+    @Param('id') id: string,
+    @Body() dto: UpdateLabelDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<LabelDto> {
+    return this.projects.updateLabel(id, dto, user.id);
+  }
+
+  @Delete('labels/:id')
+  deleteLabel(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.projects.deleteLabel(id, user.id);
   }
 }
