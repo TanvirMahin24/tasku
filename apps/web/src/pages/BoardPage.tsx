@@ -54,7 +54,6 @@ import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge, LabelBadge } from '@/components/ui/Badge';
 import { IssueCardContent } from '@/components/IssueCard';
 import { IssueDrawer } from '@/components/IssueDrawer';
@@ -99,7 +98,8 @@ function laneKeyFor(issue: IssueSummaryDto, by: BoardSwimlane): string {
     case 'ASSIGNEE':
       return issue.assignee?.id ?? '__none__';
     case 'TEAM':
-      return issue.team?.id ?? '__none__';
+      // Group by the issue's first team (an issue can now have several).
+      return issue.teams[0]?.id ?? '__none__';
     case 'PRIORITY':
       return issue.priority;
     case 'EPIC':
@@ -133,7 +133,7 @@ function buildLanes(board: BoardDto, by: BoardSwimlane): Lane[] {
       if (by === 'ASSIGNEE') {
         titles.set(k, issue.assignee?.displayName ?? 'Unassigned');
       } else if (by === 'TEAM') {
-        titles.set(k, issue.team?.name ?? 'No team');
+        titles.set(k, issue.teams[0]?.name ?? 'No team');
       } else if (by === 'EPIC') {
         titles.set(k, issue.parentId ? `Epic ${issue.parentId.slice(0, 6)}` : 'No epic');
       }
@@ -356,20 +356,14 @@ function BoardView({
   }
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Board" />
-        <PageSpinner label="Loading board…" />
-      </>
-    );
+    return <PageSpinner label="Loading board…" />;
   }
 
   if (!board) {
     return (
-      <>
-        <PageHeader title="Board" />
-        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Board not found.</div>
-      </>
+      <div className="p-6 text-sm text-gray-500 dark:text-gray-400">
+        Board not found.
+      </div>
     );
   }
 
@@ -382,48 +376,43 @@ function BoardView({
 
   return (
     <>
-      <PageHeader
-        title={board.project.name}
-        subtitle={
-          <span className="flex items-center gap-2">
-            <BoardSwitcher
-              boards={boards}
-              currentBoardId={currentBoardId}
-              currentName={currentBoardName}
-              onSelect={onSelectBoard}
-              onCreate={() => setCreateBoardOpen(true)}
-              onToggleStar={(b) => toggleStar.mutate(b)}
-            />
-            {board.board?.teamId && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                <span className="h-2 w-2 rounded-full bg-brand-500" />
-                Team board
-              </span>
-            )}
-            {board.activeSprint ? (
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300">
-                {board.activeSprint.name} · active
-              </Badge>
-            ) : (
-              <span className="text-gray-400">No active sprint</span>
-            )}
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span>{totalIssues} issues</span>
-          </span>
-        }
-        actions={
-          <div className="flex items-center gap-2">
-            <SwimlaneControl
-              value={swimlaneBy}
-              disabled={!canConfigureSwimlanes || updateBoard.isPending}
-              onChange={(v) => updateBoard.mutate(v)}
-            />
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> Create issue
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-6 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+        <span className="flex items-center gap-2 text-sm text-ink-muted dark:text-gray-400">
+          <BoardSwitcher
+            boards={boards}
+            currentBoardId={currentBoardId}
+            currentName={currentBoardName}
+            onSelect={onSelectBoard}
+            onCreate={() => setCreateBoardOpen(true)}
+            onToggleStar={(b) => toggleStar.mutate(b)}
+          />
+          {board.board?.teamId && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              <span className="h-2 w-2 rounded-full bg-brand-500" />
+              Team board
+            </span>
+          )}
+          {board.activeSprint ? (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300">
+              {board.activeSprint.name} · active
+            </Badge>
+          ) : (
+            <span className="text-gray-400">No active sprint</span>
+          )}
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span>{totalIssues} issues</span>
+        </span>
+        <div className="flex items-center gap-2">
+          <SwimlaneControl
+            value={swimlaneBy}
+            disabled={!canConfigureSwimlanes || updateBoard.isPending}
+            onChange={(v) => updateBoard.mutate(v)}
+          />
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" /> Create issue
+          </Button>
+        </div>
+      </div>
 
       <QuickFilterBar
         assignees={assignees}
@@ -669,10 +658,10 @@ function QuickFilterBar({
                 onClick={() => toggleAssignee(u.id)}
                 title={u.displayName}
                 className={clsx(
-                  'rounded-full ring-2 transition-all',
+                  'inline-flex rounded-full align-middle transition-all',
                   on
-                    ? 'ring-brand-500'
-                    : 'opacity-60 ring-transparent hover:opacity-100',
+                    ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+                    : 'opacity-60 hover:opacity-100',
                 )}
               >
                 <Avatar user={u} size="sm" />
@@ -685,21 +674,27 @@ function QuickFilterBar({
       {labels.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           <Tag className="h-3.5 w-3.5 text-gray-400" />
-          {labels.map((l) => {
-            const on = filter.labelIds.has(l.id);
-            return (
-              <button
-                key={l.id}
-                onClick={() => toggleLabel(l.id)}
-                className={clsx(
-                  'rounded transition-opacity',
-                  on ? 'ring-2 ring-brand-500' : 'opacity-60 hover:opacity-100',
-                )}
-              >
-                <LabelBadge label={l} />
-              </button>
-            );
-          })}
+          {[...labels]
+            .sort(
+              (a, b) =>
+                Number(filter.labelIds.has(b.id)) -
+                Number(filter.labelIds.has(a.id)),
+            )
+            .map((l) => {
+              const on = filter.labelIds.has(l.id);
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => toggleLabel(l.id)}
+                  className={clsx(
+                    'rounded transition-opacity',
+                    !on && 'opacity-60 hover:opacity-100',
+                  )}
+                >
+                  <LabelBadge label={l} checked={on} />
+                </button>
+              );
+            })}
         </div>
       )}
 
@@ -867,7 +862,7 @@ function BoardColumn({
       className={clsx(
         'flex w-72 shrink-0 flex-col rounded-[10px] bg-surface-sunken transition-colors dark:bg-gray-900/70',
         laned ? 'min-h-[7rem]' : 'h-full',
-        isOver && 'bg-brand-50 ring-2 ring-[#4C9AFF] dark:bg-brand-500/10',
+        isOver && 'bg-brand-50 ring-2 ring-brand-300 dark:bg-brand-500/10',
       )}
     >
       <div className="flex items-center justify-between rounded-t-[10px] px-3 py-2.5">

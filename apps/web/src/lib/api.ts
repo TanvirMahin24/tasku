@@ -20,8 +20,12 @@ import type {
   CreateTeamDto,
   CreateWorklogDto,
   CreateCustomFieldDto,
+  CreateKnowledgeLinkDto,
   CreateVersionDto,
   CustomFieldDefDto,
+  KnowledgeDocDto,
+  ImportableKnowledgeDocDto,
+  MentionableDto,
   CustomFieldValue,
   DashboardDto,
   UpdateVersionDto,
@@ -52,10 +56,18 @@ import type {
   UpdateCustomFieldDto,
   UpdateIssueDto,
   UpdateMemberRoleDto,
+  UpdateProjectDto,
   UpdateStatusDto,
   UpdateTeamDto,
   UserDto,
   WorklogDto,
+  ViewSummaryDto,
+  ViewDto,
+  ViewRowDto,
+  ViewFieldDto,
+  ViewActivityDto,
+  CreateViewDto,
+  UpdateViewDto,
 } from '@tasku/types';
 
 const API_URL =
@@ -153,12 +165,18 @@ export const projectsApi = {
     api.get<ProjectDto>(`/projects/${key}`).then((r) => r.data),
   create: (dto: CreateProjectDto) =>
     api.post<ProjectDto>('/projects', dto).then((r) => r.data),
+  update: (key: string, dto: UpdateProjectDto) =>
+    api.patch<ProjectDto>(`/projects/${key}`, dto).then((r) => r.data),
   statuses: (key: string) =>
     api.get<StatusDto[]>(`/projects/${key}/statuses`).then((r) => r.data),
   labels: (key: string) =>
     api.get<LabelDto[]>(`/projects/${key}/labels`).then((r) => r.data),
   createLabel: (key: string, dto: { name: string; color: string }) =>
     api.post<LabelDto>(`/projects/${key}/labels`, dto).then((r) => r.data),
+  updateLabel: (id: string, dto: { name?: string; color?: string }) =>
+    api.patch<LabelDto>(`/labels/${id}`, dto).then((r) => r.data),
+  deleteLabel: (id: string) =>
+    api.delete<void>(`/labels/${id}`).then((r) => r.data),
   members: (key: string) =>
     api
       .get<ProjectMemberDto[]>(`/projects/${key}/members`)
@@ -409,6 +427,125 @@ export async function fetchAttachmentBlobUrl(
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge base
+// ---------------------------------------------------------------------------
+
+function knowledgeFileForm(file: File, title?: string): FormData {
+  const form = new FormData();
+  form.append('file', file);
+  if (title?.trim()) form.append('title', title.trim());
+  return form;
+}
+
+export const knowledgeApi = {
+  listTeam: (teamId: string) =>
+    api.get<KnowledgeDocDto[]>(`/teams/${teamId}/knowledge`).then((r) => r.data),
+  listIssue: (issueKey: string) =>
+    api
+      .get<KnowledgeDocDto[]>(`/issues/${issueKey}/knowledge`)
+      .then((r) => r.data),
+
+  addTeamLink: (teamId: string, dto: CreateKnowledgeLinkDto) =>
+    api
+      .post<KnowledgeDocDto>(`/teams/${teamId}/knowledge/link`, dto)
+      .then((r) => r.data),
+  addIssueLink: (issueKey: string, dto: CreateKnowledgeLinkDto) =>
+    api
+      .post<KnowledgeDocDto>(`/issues/${issueKey}/knowledge/link`, dto)
+      .then((r) => r.data),
+
+  uploadTeamFile: (teamId: string, file: File, title?: string) =>
+    api
+      .post<KnowledgeDocDto>(
+        `/teams/${teamId}/knowledge/file`,
+        knowledgeFileForm(file, title),
+        { headers: { 'Content-Type': undefined } },
+      )
+      .then((r) => r.data),
+  uploadIssueFile: (issueKey: string, file: File, title?: string) =>
+    api
+      .post<KnowledgeDocDto>(
+        `/issues/${issueKey}/knowledge/file`,
+        knowledgeFileForm(file, title),
+        { headers: { 'Content-Type': undefined } },
+      )
+      .then((r) => r.data),
+
+  importToTeam: (teamId: string, sourceDocId: string) =>
+    api
+      .post<KnowledgeDocDto>(`/teams/${teamId}/knowledge/import`, { sourceDocId })
+      .then((r) => r.data),
+  importToIssue: (issueKey: string, sourceDocId: string) =>
+    api
+      .post<KnowledgeDocDto>(`/issues/${issueKey}/knowledge/import`, {
+        sourceDocId,
+      })
+      .then((r) => r.data),
+
+  importable: (search?: string) =>
+    api
+      .get<ImportableKnowledgeDocDto[]>(`/knowledge/importable`, {
+        params: search ? { search } : undefined,
+      })
+      .then((r) => r.data),
+
+  remove: (id: string) =>
+    api.delete<void>(`/knowledge/${id}`).then((r) => r.data),
+};
+
+/** Fetch a KB file's bytes (with auth) as an object URL for download. */
+export async function fetchKnowledgeBlobUrl(id: string): Promise<string> {
+  const res = await api.get<Blob>(`/knowledge/${id}/raw`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(res.data);
+}
+
+// ---------------------------------------------------------------------------
+// Mentions
+// ---------------------------------------------------------------------------
+
+export const mentionsApi = {
+  search: (projectKey: string, q: string) =>
+    api
+      .get<MentionableDto[]>(`/projects/${projectKey}/mentionables`, {
+        params: q ? { q } : undefined,
+      })
+      .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Views
+// ---------------------------------------------------------------------------
+
+export const viewsApi = {
+  list: (starred?: boolean) =>
+    api
+      .get<ViewSummaryDto[]>('/views', {
+        params: starred ? { starred: 'true' } : undefined,
+      })
+      .then((r) => r.data),
+  fields: () => api.get<ViewFieldDto[]>('/views/fields').then((r) => r.data),
+  get: (id: string) => api.get<ViewDto>(`/views/${id}`).then((r) => r.data),
+  create: (dto: CreateViewDto) =>
+    api.post<ViewDto>('/views', dto).then((r) => r.data),
+  update: (id: string, dto: UpdateViewDto) =>
+    api.patch<ViewDto>(`/views/${id}`, dto).then((r) => r.data),
+  archive: (id: string) =>
+    api.post<{ archived: boolean }>(`/views/${id}/archive`).then((r) => r.data),
+  restore: (id: string) =>
+    api.post<{ archived: boolean }>(`/views/${id}/restore`).then((r) => r.data),
+  star: (id: string) =>
+    api.post<{ starred: boolean }>(`/views/${id}/star`).then((r) => r.data),
+  unstar: (id: string) =>
+    api.delete<{ starred: boolean }>(`/views/${id}/star`).then((r) => r.data),
+  results: (id: string) =>
+    api.get<ViewRowDto[]>(`/views/${id}/results`).then((r) => r.data),
+  activity: (id: string) =>
+    api.get<ViewActivityDto[]>(`/views/${id}/activity`).then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------
 
@@ -471,6 +608,8 @@ export const commentsApi = {
     api
       .post<CommentDto>(`/issues/${issueKey}/comments`, dto)
       .then((r) => r.data),
+  remove: (id: string) =>
+    api.delete<void>(`/comments/${id}`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

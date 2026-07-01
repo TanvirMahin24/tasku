@@ -55,6 +55,7 @@ export function toProjectDto(p: any, role?: Role): ProjectDto {
     description: p.description ?? null,
     lead: toUserDtoOrNull(p.lead),
     ...(role ? { role } : {}),
+    defaultTab: p.defaultTab ?? 'board',
     createdAt: iso(p.createdAt),
   };
 }
@@ -152,7 +153,7 @@ export function toIssueSummaryDto(i: any): IssueSummaryDto {
     sprintId: i.sprintId ?? null,
     parentId: i.parentId ?? null,
     labels: resolveLabels(i),
-    team: toTeamSummaryDtoOrNull(i.team),
+    teams: (i.teams ?? []).map(toTeamSummaryDto),
     startDate: i.startDate ? iso(i.startDate) : null,
     dueDate: i.dueDate ? iso(i.dueDate) : null,
   };
@@ -165,6 +166,8 @@ export function toCommentDto(c: any): CommentDto {
     author: toUserDto(c.author),
     createdAt: iso(c.createdAt),
     updatedAt: iso(c.updatedAt),
+    parentId: c.parentId ?? null,
+    ...(c.replies ? { replies: c.replies.map(toCommentDto) } : {}),
   };
 }
 

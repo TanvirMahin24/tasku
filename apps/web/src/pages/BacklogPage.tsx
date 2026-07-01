@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { LabelBadge } from '@/components/ui/Badge';
 import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
@@ -69,33 +68,24 @@ export default function BacklogPage() {
   });
 
   if (sprintsLoading) {
-    return (
-      <>
-        <PageHeader title="Backlog" />
-        <PageSpinner label="Loading backlog…" />
-      </>
-    );
+    return <PageSpinner label="Loading backlog…" />;
   }
 
   return (
     <>
-      <PageHeader
-        title="Backlog"
-        subtitle="Plan sprints and groom your backlog"
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setSprintModalOpen(true)}
-            >
-              <Plus className="h-4 w-4" /> Create sprint
-            </Button>
-            <Button onClick={() => { setCreateSprintFor(BACKLOG); setCreateOpen(true); }}>
-              <Plus className="h-4 w-4" /> Create issue
-            </Button>
-          </>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-6 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+        <span className="text-sm text-ink-muted dark:text-gray-400">
+          Plan sprints and groom your backlog
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setSprintModalOpen(true)}>
+            <Plus className="h-4 w-4" /> Create sprint
+          </Button>
+          <Button onClick={() => { setCreateSprintFor(BACKLOG); setCreateOpen(true); }}>
+            <Plus className="h-4 w-4" /> Create issue
+          </Button>
+        </div>
+      </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin p-6">
         {openSprints.map((sprint) => (

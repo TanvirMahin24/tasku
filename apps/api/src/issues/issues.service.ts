@@ -20,6 +20,7 @@ import {
   toIssueDetailDto,
   toIssueSummaryDto,
 } from '../common/mappers';
+import { userMentionIdsFromDoc } from '../common/mentions.util';
 import { rankAfter, rankBetween } from '../common/rank.util';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
@@ -31,14 +32,14 @@ import { BulkUpdateDto } from './dto/bulk-update.dto';
 // Prisma `include` fragments reused across reads.
 const SUMMARY_INCLUDE = {
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
 } satisfies Prisma.IssueInclude;
 
 const DETAIL_INCLUDE = {
   reporter: true,
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
   components: { include: { component: true } },
   comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
@@ -156,7 +157,9 @@ export class IssuesService {
           parentId: dto.parentId ?? null,
           sprintId: dto.sprintId ?? null,
           storyPoints: dto.storyPoints ?? null,
-          teamId: dto.teamId ?? null,
+          teams: dto.teamIds?.length
+            ? { connect: dto.teamIds.map((id) => ({ id })) }
+            : undefined,
           startDate: dto.startDate ? new Date(dto.startDate) : null,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           rank,
@@ -339,7 +342,7 @@ export class IssuesService {
     }
     if (query.statusId) where.statusId = query.statusId;
     if (query.assigneeId) where.assigneeId = query.assigneeId;
-    if (query.teamId) where.teamId = query.teamId;
+    if (query.teamId) where.teams = { some: { id: query.teamId } };
     if (query.type) where.type = query.type;
     if (query.parentId) where.parentId = query.parentId;
     if (query.search) {
@@ -484,29 +487,24 @@ export class IssuesService {
       );
     }
 
-    // --- Team (human label = team name) ---
-    if (dto.teamId !== undefined && dto.teamId !== existing.teamId) {
-      const [oldTeam, newTeam] = await Promise.all([
-        existing.teamId
-          ? this.prisma.team.findUnique({ where: { id: existing.teamId } })
-          : Promise.resolve(null),
-        dto.teamId
-          ? this.prisma.team.findUnique({ where: { id: dto.teamId } })
-          : Promise.resolve(null),
-      ]);
-      if (dto.teamId && !newTeam) {
-        throw new BadRequestException('teamId is not a valid team');
+    // --- Teams (m2m; replace the whole set) ---
+    if (dto.teamIds !== undefined) {
+      const newTeams = dto.teamIds.length
+        ? await this.prisma.team.findMany({
+            where: { id: { in: dto.teamIds } },
+          })
+        : [];
+      if (newTeams.length !== dto.teamIds.length) {
+        throw new BadRequestException('teamIds contains an invalid team');
       }
-      data.team = dto.teamId
-        ? { connect: { id: dto.teamId } }
-        : { disconnect: true };
+      data.teams = { set: dto.teamIds.map((id) => ({ id })) };
       activities.push(
         this.activity(
           existing.id,
           userId,
           'team',
-          oldTeam?.name ?? null,
-          newTeam?.name ?? null,
+          null,
+          newTeams.map((t) => t.name).join(', ') || null,
         ),
       );
     }
@@ -688,6 +686,31 @@ export class IssuesService {
 
     // --- Labels (replace the whole set) ---
     const labelsChanged = dto.labelIds !== undefined;
+
+    // --- @mentions in the description -> MENTIONED (project members only) ---
+    if (
+      dto.description !== undefined &&
+      dto.description !== existing.description
+    ) {
+      const ids = userMentionIdsFromDoc(dto.description);
+      if (ids.length) {
+        const already = new Set(notifications.map((n) => n.recipientId));
+        const members = await this.prisma.projectMember.findMany({
+          where: { projectId: existing.projectId, userId: { in: ids } },
+          select: { userId: true },
+        });
+        for (const m of members) {
+          if (m.userId === userId || already.has(m.userId)) continue;
+          already.add(m.userId);
+          notifications.push({
+            recipientId: m.userId,
+            type: NotificationType.MENTIONED,
+            issueKey: existing.key,
+            message: `You were mentioned on ${existing.key}`,
+          });
+        }
+      }
+    }
 
     // Fan out to watchers (de-duped against existing recipients, excl. actor).
     if (watcherNotify) {
@@ -875,11 +898,14 @@ export class IssuesService {
         throw new BadRequestException('sprintId does not belong to project');
       }
     }
-    if (changes.teamId) {
-      const team = await this.prisma.team.findUnique({
-        where: { id: changes.teamId },
+    if (changes.teamIds?.length) {
+      const found = await this.prisma.team.findMany({
+        where: { id: { in: changes.teamIds } },
+        select: { id: true },
       });
-      if (!team) throw new BadRequestException('teamId is not a valid team');
+      if (found.length !== changes.teamIds.length) {
+        throw new BadRequestException('teamIds contains an invalid team');
+      }
     }
     if (changes.assigneeId) {
       const user = await this.prisma.user.findUnique({
@@ -900,10 +926,8 @@ export class IssuesService {
         ? { connect: { id: changes.assigneeId } }
         : { disconnect: true };
     }
-    if (changes.teamId !== undefined) {
-      scalarData.team = changes.teamId
-        ? { connect: { id: changes.teamId } }
-        : { disconnect: true };
+    if (changes.teamIds !== undefined) {
+      scalarData.teams = { set: changes.teamIds.map((id) => ({ id })) };
     }
     if (changes.sprintId !== undefined) {
       scalarData.sprint = changes.sprintId
@@ -956,7 +980,7 @@ export class IssuesService {
             this.activity(issue.id, userId, 'assignee', null, null),
           );
         }
-        if (changes.teamId !== undefined) {
+        if (changes.teamIds !== undefined) {
           activities.push(this.activity(issue.id, userId, 'team', null, null));
         }
         if (changes.sprintId !== undefined) {

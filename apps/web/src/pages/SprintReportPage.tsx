@@ -6,7 +6,7 @@ import type { IssueSummaryDto, StatusDto } from '@tasku/types';
 import { issuesApi, projectsApi, sprintsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader, EmptyState } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 
 export default function SprintReportPage() {
   const { key = '' } = useParams<{ key: string }>();
@@ -32,42 +32,29 @@ export default function SprintReportPage() {
   });
 
   if (sprintsLoading) {
-    return (
-      <>
-        <PageHeader title="Sprint report" />
-        <PageSpinner label="Loading…" />
-      </>
-    );
+    return <PageSpinner label="Loading…" />;
   }
 
   if (!activeSprint) {
     return (
-      <>
-        <PageHeader title="Sprint report" subtitle="Active sprint summary" />
-        <div className="p-6">
-          <EmptyState
-            icon={<BarChart3 className="h-10 w-10" />}
-            title="No active sprint"
-            description="Start a sprint from the backlog to see its progress here."
-          />
-        </div>
-      </>
+      <div className="p-6">
+        <EmptyState
+          icon={<BarChart3 className="h-10 w-10" />}
+          title="No active sprint"
+          description="Start a sprint from the backlog to see its progress here."
+        />
+      </div>
     );
   }
 
   return (
     <>
-      <PageHeader
-        title="Sprint report"
-        subtitle={
-          <span className="flex items-center gap-2">
-            <span className="font-medium text-ink-soft dark:text-gray-200">{activeSprint.name}</span>
-            {activeSprint.goal && (
-              <span className="text-ink-faint">· {activeSprint.goal}</span>
-            )}
-          </span>
-        }
-      />
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-white px-6 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <span className="font-medium text-ink-soft dark:text-gray-200">{activeSprint.name}</span>
+        {activeSprint.goal && (
+          <span className="text-ink-faint">· {activeSprint.goal}</span>
+        )}
+      </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
         {issuesLoading ? (
           <PageSpinner label="Crunching numbers…" />

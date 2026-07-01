@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/AppLayout';
+import { SpaceLayout, SpaceHome } from '@/components/SpaceLayout';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ProjectsPage from '@/pages/ProjectsPage';
@@ -11,9 +12,12 @@ import SprintReportPage from '@/pages/SprintReportPage';
 import IssuePage from '@/pages/IssuePage';
 import TeamsPage from '@/pages/TeamsPage';
 import TeamPage from '@/pages/TeamPage';
+import ViewsPage from '@/pages/ViewsPage';
+import ViewPage from '@/pages/ViewPage';
 import OverviewPage from '@/pages/OverviewPage';
 import ListPage from '@/pages/ListPage';
 import TimelinePage from '@/pages/TimelinePage';
+import CalendarPage from '@/pages/CalendarPage';
 import SearchPage from '@/pages/SearchPage';
 import ReportsPage from '@/pages/ReportsPage';
 import ReleasesPage from '@/pages/ReleasesPage';
@@ -34,19 +38,22 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:id" element={<TeamPage />} />
-          <Route path="/projects/:key/overview" element={<OverviewPage />} />
-          <Route path="/projects/:key/reports" element={<ReportsPage />} />
-          <Route path="/projects/:key/board" element={<BoardPage />} />
-          <Route
-            path="/projects/:key/boards/:boardId"
-            element={<BoardPage />}
-          />
-          <Route path="/projects/:key/list" element={<ListPage />} />
-          <Route path="/projects/:key/timeline" element={<TimelinePage />} />
-          <Route path="/projects/:key/backlog" element={<BacklogPage />} />
-          <Route path="/projects/:key/report" element={<SprintReportPage />} />
-          <Route path="/projects/:key/releases" element={<ReleasesPage />} />
-          <Route path="/projects/:key/settings" element={<SettingsPage />} />
+          <Route path="/views" element={<ViewsPage />} />
+          <Route path="/views/:id" element={<ViewPage />} />
+          <Route path="/projects/:key" element={<SpaceLayout />}>
+            <Route index element={<SpaceHome />} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="board" element={<BoardPage />} />
+            <Route path="boards/:boardId" element={<BoardPage />} />
+            <Route path="list" element={<ListPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="backlog" element={<BacklogPage />} />
+            <Route path="report" element={<SprintReportPage />} />
+            <Route path="releases" element={<ReleasesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
           <Route path="/issues/:issueKey" element={<IssuePage />} />
         </Route>
       </Route>

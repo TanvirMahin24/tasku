@@ -14,9 +14,9 @@ import {
   EyeOff,
   FileText,
   Link2,
+  ListPlus,
   Paperclip,
   Plus,
-  Send,
   Trash2,
   X,
 } from 'lucide-react';
@@ -67,7 +67,39 @@ import { Spinner } from '@/components/ui/Spinner';
 import { AssigneeSelect } from '@/components/ui/AssigneeSelect';
 import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
+import { TeamMultiSelect } from '@/components/ui/TeamMultiSelect';
 import { IssueTypeIcon } from '@/components/ui/icons';
+import { KnowledgeBase } from '@/components/KnowledgeBase';
+import { MentionInput } from '@/components/mentions/MentionInput';
+import { MentionText } from '@/components/mentions/MentionText';
+import { useAuthStore } from '@/store/auth';
+
+/** Smooth-scroll a labelled section into view within the drawer's main column. */
+function scrollToSection(id: string) {
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function DrawerAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Paperclip;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex h-[34px] items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-[12.5px] font-semibold text-ink-soft hover:bg-surface-sunken dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+    >
+      <Icon className="h-[15px] w-[15px]" />
+      {label}
+    </button>
+  );
+}
 
 export function IssueDrawer({
   issueKey,
@@ -96,7 +128,7 @@ export function IssueDrawer({
   return createPortal(
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-gray-900/30 dark:bg-black/60" onClick={onClose} aria-hidden />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
+      <aside className="absolute right-0 top-0 flex h-full w-[1040px] max-w-[95vw] flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
         <DrawerBody
           issueKey={issueKey}
           projectKey={projectKey}
@@ -168,6 +200,13 @@ function DrawerBody({
     onError: (err) => setErrorMsg(apiErrorMessage(err, 'Delete failed')),
   });
 
+  const watchToggle = useMutation({
+    mutationFn: (watching: boolean) =>
+      watching ? issuesApi.unwatch(issueKey) : issuesApi.watch(issueKey),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) }),
+  });
+
   function patch(dto: UpdateIssueDto) {
     setErrorMsg(null);
     update.mutate(dto);
@@ -176,7 +215,11 @@ function DrawerBody({
   if (isLoading) {
     return (
       <>
-        <DrawerHeader issueKey={issueKey} onClose={onClose} />
+        <DrawerHeader
+          projectKey={projectKey}
+          issueKey={issueKey}
+          onClose={onClose}
+        />
         <div className="flex flex-1 items-center justify-center">
           <Spinner className="h-6 w-6" />
         </div>
@@ -187,7 +230,11 @@ function DrawerBody({
   if (error || !issue) {
     return (
       <>
-        <DrawerHeader issueKey={issueKey} onClose={onClose} />
+        <DrawerHeader
+          projectKey={projectKey}
+          issueKey={issueKey}
+          onClose={onClose}
+        />
         <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-ink-muted">
           {apiErrorMessage(error, 'Could not load this issue.')}
         </div>
@@ -197,14 +244,32 @@ function DrawerBody({
 
   return (
     <>
-      <DrawerHeader issueKey={issue.key} onClose={onClose}>
+      <DrawerHeader
+        projectKey={projectKey}
+        issueKey={issue.key}
+        type={issue.type}
+        onClose={onClose}
+      >
+        <button
+          onClick={() => watchToggle.mutate(issue.watching)}
+          disabled={watchToggle.isPending}
+          className="flex h-[30px] items-center gap-1.5 rounded-md border border-line px-2.5 text-[11.5px] font-semibold text-ink-soft hover:bg-surface-sunken dark:border-gray-700 dark:text-gray-300"
+          title={issue.watching ? 'Stop watching' : 'Watch'}
+        >
+          {issue.watching ? (
+            <Eye className="h-3.5 w-3.5" />
+          ) : (
+            <EyeOff className="h-3.5 w-3.5" />
+          )}
+          {issue.watching ? 'Watching' : 'Watch'}
+        </button>
         <button
           onClick={() => {
             if (confirm(`Delete ${issue.key}? This cannot be undone.`)) {
               remove.mutate();
             }
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-md border border-line text-ink-faint hover:bg-red-50 hover:text-red-600 dark:border-gray-700"
           title="Delete issue"
         >
           <Trash2 className="h-4 w-4" />
@@ -213,7 +278,7 @@ function DrawerBody({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main column */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5">
+        <div className="flex-1 overflow-y-auto scrollbar-thin border-r border-line-soft px-6 py-5 dark:border-gray-800">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -222,8 +287,26 @@ function DrawerBody({
               if (next && next !== issue.title) patch({ title: next });
               else if (!next) setTitle(issue.title);
             }}
-            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-ink hover:border-line focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
+            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[22px] font-bold leading-tight tracking-[-0.01em] text-ink hover:border-line focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
           />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <DrawerAction
+              icon={Paperclip}
+              label="Attach"
+              onClick={() => scrollToSection('drawer-attachments')}
+            />
+            <DrawerAction
+              icon={ListPlus}
+              label="Add subtask"
+              onClick={() => scrollToSection('drawer-subtasks')}
+            />
+            <DrawerAction
+              icon={Link2}
+              label="Link issue"
+              onClick={() => scrollToSection('drawer-links')}
+            />
+          </div>
 
           {issue.parent && (
             <div className="mt-3">
@@ -247,16 +330,21 @@ function DrawerBody({
             <DescriptionEditor
               key={issue.id}
               value={issue.description}
+              projectKey={projectKey}
               onSave={(json) => patch({ description: json })}
             />
           </Section>
 
-          <Section label="Subtasks">
+          <Section label="Subtasks" id="drawer-subtasks">
             <SubtasksPanel
               issueKey={issue.key}
               items={issue.children}
               statuses={statuses}
             />
+          </Section>
+
+          <Section label="Knowledge base" id="drawer-knowledge">
+            <KnowledgeBase scope={{ kind: 'issue', issueKey: issue.key }} />
           </Section>
 
           {issue.delivery && (
@@ -265,11 +353,11 @@ function DrawerBody({
             </Section>
           )}
 
-          <Section label="Links">
+          <Section label="Links" id="drawer-links">
             <LinksPanel issueKey={issue.key} links={issue.links} />
           </Section>
 
-          <Section label="Attachments">
+          <Section label="Attachments" id="drawer-attachments">
             <AttachmentsPanel
               issueKey={issue.key}
               attachments={issue.attachments}
@@ -277,7 +365,11 @@ function DrawerBody({
           </Section>
 
           <Section label="Comments">
-            <CommentsPanel issueKey={issue.key} comments={issue.comments} />
+            <CommentsPanel
+              issueKey={issue.key}
+              projectKey={projectKey}
+              comments={issue.comments}
+            />
           </Section>
 
           <Section label="Activity">
@@ -286,164 +378,149 @@ function DrawerBody({
         </div>
 
         {/* Sidebar fields */}
-        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-line bg-surface-sunken px-5 py-5 dark:border-gray-700 dark:bg-gray-950/40">
+        <aside className="w-[360px] shrink-0 space-y-3.5 overflow-y-auto scrollbar-thin px-5 py-5">
           {errorMsg && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
               {errorMsg}
             </p>
           )}
 
-          <Field label="Status">
+          <div>
+            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-faint">
+              Status
+            </span>
             <StatusMenu
               statuses={statuses}
               value={issue.statusId}
               onChange={(id) => patch({ statusId: id })}
             />
-          </Field>
-
-          <Field label="Assignee">
-            <AssigneeSelect
-              users={users}
-              value={issue.assignee?.id ?? null}
-              onChange={(id) => patch({ assigneeId: id })}
-            />
-          </Field>
-
-          <Field label="Type">
-            <div className="flex items-center gap-2">
-              <IssueTypeIcon type={issue.type} />
-              <Select
-                value={issue.type}
-                onChange={(e) =>
-                  patch({ type: e.target.value as IssueDetailDto['type'] })
-                }
-                options={ISSUE_TYPES.map((t) => ({
-                  value: t,
-                  label: ISSUE_TYPE_META[t].label,
-                }))}
-              />
-            </div>
-          </Field>
-
-          <Field label="Priority">
-            <Select
-              value={issue.priority}
-              onChange={(e) =>
-                patch({ priority: e.target.value as IssueDetailDto['priority'] })
-              }
-              options={PRIORITIES.map((p) => ({
-                value: p,
-                label: PRIORITY_META[p].label,
-              }))}
-            />
-          </Field>
-
-          <Field label="Story points">
-            <input
-              type="number"
-              min={0}
-              defaultValue={issue.storyPoints ?? ''}
-              key={issue.storyPoints ?? 'none'}
-              onBlur={(e) => {
-                const raw = e.target.value.trim();
-                const next = raw === '' ? null : Number(raw);
-                if (next !== (issue.storyPoints ?? null)) {
-                  patch({ storyPoints: next });
-                }
-              }}
-              className={inputClass}
-              placeholder="—"
-            />
-          </Field>
-
-          <Field label="Labels">
-            <LabelPicker
-              labels={labels}
-              selectedIds={issue.labels.map((l) => l.id)}
-              onChange={(ids) => patch({ labelIds: ids })}
-            />
-          </Field>
-
-          <Field label="Team">
-            <Select
-              value={issue.team?.id ?? ''}
-              onChange={(e) =>
-                patch({ teamId: e.target.value ? e.target.value : null })
-              }
-              placeholder="No team"
-              options={teams.map((t) => ({ value: t.id, label: t.name }))}
-            />
-          </Field>
-
-          <Field label="Fix versions">
-            <VersionMultiSelect
-              versions={versions}
-              value={issue.versions.map((v) => v.id)}
-              onChange={(ids) => patch({ fixVersionIds: ids })}
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Start date">
-              <input
-                type="date"
-                defaultValue={toDateInput(issue.startDate)}
-                key={`start-${issue.startDate ?? 'none'}`}
-                onChange={(e) =>
-                  patch({ startDate: e.target.value || null })
-                }
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Due date">
-              <input
-                type="date"
-                defaultValue={toDateInput(issue.dueDate)}
-                key={`due-${issue.dueDate ?? 'none'}`}
-                onChange={(e) => patch({ dueDate: e.target.value || null })}
-                className={inputClass}
-              />
-            </Field>
           </div>
 
-          <Field label="Watchers">
-            <WatchersPanel
-              issueKey={issue.key}
-              watching={issue.watching}
-              watchers={issue.watchers}
-            />
-          </Field>
-
-          {issue.customFields.length > 0 && (
-            <div className="space-y-3 border-t border-line pt-3 dark:border-gray-700">
+          <div className="rounded-[10px] border border-line dark:border-gray-700">
+            <div className="px-3.5 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-faint">
+              Details
+            </div>
+            <div className="flex flex-col px-3.5 pb-2.5">
+              <Row label="Assignee">
+                <AssigneeSelect
+                  users={users}
+                  value={issue.assignee?.id ?? null}
+                  onChange={(id) => patch({ assigneeId: id })}
+                />
+              </Row>
+              <Row label="Reporter">
+                <span className="flex items-center gap-1.5 text-[12px] font-medium text-ink dark:text-gray-100">
+                  <Avatar user={issue.reporter} size="xs" />
+                  {issue.reporter.displayName}
+                </span>
+              </Row>
+              <Row label="Priority">
+                <Select
+                  value={issue.priority}
+                  onChange={(e) =>
+                    patch({
+                      priority: e.target.value as IssueDetailDto['priority'],
+                    })
+                  }
+                  options={PRIORITIES.map((p) => ({
+                    value: p,
+                    label: PRIORITY_META[p].label,
+                  }))}
+                />
+              </Row>
+              <Row label="Type">
+                <div className="flex items-center gap-2">
+                  <IssueTypeIcon type={issue.type} />
+                  <Select
+                    value={issue.type}
+                    onChange={(e) =>
+                      patch({ type: e.target.value as IssueDetailDto['type'] })
+                    }
+                    options={ISSUE_TYPES.map((t) => ({
+                      value: t,
+                      label: ISSUE_TYPE_META[t].label,
+                    }))}
+                  />
+                </div>
+              </Row>
+              <Row label="Story points">
+                <input
+                  type="number"
+                  min={0}
+                  defaultValue={issue.storyPoints ?? ''}
+                  key={issue.storyPoints ?? 'none'}
+                  onBlur={(e) => {
+                    const raw = e.target.value.trim();
+                    const next = raw === '' ? null : Number(raw);
+                    if (next !== (issue.storyPoints ?? null)) {
+                      patch({ storyPoints: next });
+                    }
+                  }}
+                  className={inputClass}
+                  placeholder="—"
+                />
+              </Row>
+              <Row label="Labels" align="start">
+                <LabelPicker
+                  labels={labels}
+                  selectedIds={issue.labels.map((l) => l.id)}
+                  onChange={(ids) => patch({ labelIds: ids })}
+                />
+              </Row>
+              <Row label="Teams" align="start">
+                <TeamMultiSelect
+                  teams={teams}
+                  value={issue.teams.map((t) => t.id)}
+                  onChange={(ids) => patch({ teamIds: ids })}
+                />
+              </Row>
+              <Row label="Fix versions" align="start">
+                <VersionMultiSelect
+                  versions={versions}
+                  value={issue.versions.map((v) => v.id)}
+                  onChange={(ids) => patch({ fixVersionIds: ids })}
+                />
+              </Row>
+              <Row label="Start date">
+                <input
+                  type="date"
+                  defaultValue={toDateInput(issue.startDate)}
+                  key={`start-${issue.startDate ?? 'none'}`}
+                  onChange={(e) => patch({ startDate: e.target.value || null })}
+                  className={inputClass}
+                />
+              </Row>
+              <Row label="Due date">
+                <input
+                  type="date"
+                  defaultValue={toDateInput(issue.dueDate)}
+                  key={`due-${issue.dueDate ?? 'none'}`}
+                  onChange={(e) => patch({ dueDate: e.target.value || null })}
+                  className={inputClass}
+                />
+              </Row>
+              <Row label="Watchers" align="start">
+                <WatchersPanel
+                  issueKey={issue.key}
+                  watching={issue.watching}
+                  watchers={issue.watchers}
+                />
+              </Row>
               {issue.customFields.map((cf) => (
-                <Field key={cf.field.id} label={cf.field.name}>
+                <Row key={cf.field.id} label={cf.field.name} align="start">
                   <CustomFieldControl
                     issueKey={issue.key}
                     entry={cf}
                     users={users}
                   />
-                </Field>
+                </Row>
               ))}
             </div>
-          )}
+          </div>
 
-          <div className="space-y-1.5 border-t border-line pt-3 text-xs text-ink-muted dark:border-gray-700 dark:text-ink-faint">
-            <div className="flex items-center justify-between">
-              <span>Reporter</span>
-              <span className="flex items-center gap-1.5 font-medium text-ink-soft dark:text-gray-200">
-                <Avatar user={issue.reporter} size="xs" />
-                {issue.reporter.displayName}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Created</span>
-              <span>{relativeTime(issue.createdAt)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Updated</span>
-              <span>{relativeTime(issue.updatedAt)}</span>
-            </div>
+          <div className="px-1 text-[11px] text-ink-faint">
+            Created {relativeTime(issue.createdAt)} · Updated{' '}
+            {relativeTime(issue.updatedAt)}
           </div>
         </aside>
       </div>
@@ -457,77 +534,196 @@ function DrawerBody({
 
 function CommentsPanel({
   issueKey,
+  projectKey,
   comments,
 }: {
   issueKey: string;
+  projectKey: string;
   comments: CommentDto[];
 }) {
   const queryClient = useQueryClient();
-  const [body, setBody] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
+    queryClient.invalidateQueries({ queryKey: qk.comments(issueKey) });
+  };
   const add = useMutation({
-    mutationFn: (text: string) => commentsApi.create(issueKey, { body: text }),
+    mutationFn: (v: { body: string; parentId?: string | null }) =>
+      commentsApi.create(issueKey, v),
     onSuccess: () => {
-      setBody('');
-      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
-      queryClient.invalidateQueries({ queryKey: qk.comments(issueKey) });
+      setReplyTo(null);
+      invalidate();
     },
   });
+  const remove = useMutation({
+    mutationFn: (id: string) => commentsApi.remove(id),
+    onSuccess: invalidate,
+  });
+
+  // Group flat comments into one-level threads.
+  const tops = comments.filter((c) => !c.parentId);
+  const repliesByParent = new Map<string, CommentDto[]>();
+  for (const c of comments) {
+    if (!c.parentId) continue;
+    const arr = repliesByParent.get(c.parentId) ?? [];
+    arr.push(c);
+    repliesByParent.set(c.parentId, arr);
+  }
 
   return (
     <div className="space-y-4">
-      {comments.length > 0 && (
-        <ul className="space-y-3">
-          {comments.map((c) => (
-            <li key={c.id} className="flex gap-2.5">
-              <Avatar user={c.author} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-ink dark:text-gray-100">
-                    {c.author.displayName}
-                  </span>
-                  <span className="text-xs text-ink-faint">
-                    {relativeTime(c.createdAt)}
-                  </span>
-                </div>
-                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-soft dark:bg-gray-800 dark:text-gray-200">
-                  {c.body}
-                </p>
-              </div>
-            </li>
-          ))}
+      {tops.length > 0 && (
+        <ul className="space-y-4">
+          {tops.map((c) => {
+            const replies = repliesByParent.get(c.id) ?? [];
+            return (
+              <li key={c.id} className="space-y-2">
+                <CommentItem
+                  comment={c}
+                  projectKey={projectKey}
+                  onDelete={() => remove.mutate(c.id)}
+                  onReply={() =>
+                    setReplyTo((v) => (v === c.id ? null : c.id))
+                  }
+                />
+                {(replies.length > 0 || replyTo === c.id) && (
+                  <div className="ml-9 space-y-2 border-l border-line-soft pl-3 dark:border-gray-700">
+                    {replies.map((r) => (
+                      <CommentItem
+                        key={r.id}
+                        comment={r}
+                        projectKey={projectKey}
+                        onDelete={() => remove.mutate(r.id)}
+                      />
+                    ))}
+                    {replyTo === c.id && (
+                      <Composer
+                        projectKey={projectKey}
+                        placeholder="Reply…  (@ to mention)"
+                        submitLabel="Reply"
+                        autoFocus
+                        onSubmit={(text) =>
+                          add.mutateAsync({ body: text, parentId: c.id })
+                        }
+                        onCancel={() => setReplyTo(null)}
+                      />
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (body.trim()) add.mutate(body.trim());
-        }}
-        className="flex items-end gap-2"
-      >
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && body.trim()) {
-              e.preventDefault();
-              add.mutate(body.trim());
-            }
-          }}
-          placeholder="Add a comment…  (⌘/Ctrl + Enter to send)"
-          className={`${inputClass} min-h-[60px] resize-y`}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          loading={add.isPending}
-          disabled={!body.trim()}
-          className="h-9"
-        >
-          <Send className="h-3.5 w-3.5" />
+      <Composer
+        projectKey={projectKey}
+        submitLabel="Comment"
+        onSubmit={(text) => add.mutateAsync({ body: text })}
+      />
+    </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  projectKey,
+  onDelete,
+  onReply,
+}: {
+  comment: CommentDto;
+  projectKey: string;
+  onDelete: () => void;
+  onReply?: () => void;
+}) {
+  const myId = useAuthStore((s) => s.user?.id);
+  const mine = comment.author.id === myId;
+  return (
+    <div className="group flex gap-2.5">
+      <Avatar user={comment.author} size="sm" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-medium text-ink dark:text-gray-100">
+            {comment.author.displayName}
+          </span>
+          <span className="text-xs text-ink-faint">
+            {relativeTime(comment.createdAt)}
+          </span>
+          {mine && (
+            <button
+              onClick={onDelete}
+              title="Delete"
+              className="ml-auto text-ink-faint opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="mt-0.5 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-soft dark:bg-gray-800 dark:text-gray-200">
+          <MentionText body={comment.body} projectKey={projectKey} />
+        </div>
+        {onReply && (
+          <button
+            onClick={onReply}
+            className="mt-1 text-xs font-medium text-ink-faint hover:text-brand-600"
+          >
+            Reply
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Composer({
+  projectKey,
+  placeholder,
+  submitLabel,
+  autoFocus,
+  onSubmit,
+  onCancel,
+}: {
+  projectKey: string;
+  placeholder?: string;
+  submitLabel: string;
+  autoFocus?: boolean;
+  onSubmit: (text: string) => Promise<unknown>;
+  onCancel?: () => void;
+}) {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    const text = value.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      await onSubmit(text);
+      setValue('');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <MentionInput
+        value={value}
+        onChange={setValue}
+        onSubmit={submit}
+        projectKey={projectKey}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+      />
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={submit} loading={busy} disabled={!value.trim()}>
+          {submitLabel}
         </Button>
-      </form>
+        {onCancel && (
+          <Button size="sm" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -833,21 +1029,22 @@ function LinksPanel({
       {adding ? (
         <div className="space-y-2 rounded-lg border border-line bg-surface-sunken p-3 dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <Select
-              value={linkType}
-              onChange={(e) => setLinkType(e.target.value as LinkType)}
-              className="w-auto"
-              options={LINK_TYPES.map((t) => ({
-                value: t,
-                label: LINK_TYPE_LABEL[t],
-              }))}
-            />
+            <div className="w-36 shrink-0">
+              <Select
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value as LinkType)}
+                options={LINK_TYPES.map((t) => ({
+                  value: t,
+                  label: LINK_TYPE_LABEL[t],
+                }))}
+              />
+            </div>
             <input
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder="Search issue…"
               autoFocus
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} min-w-0 flex-1`}
             />
           </div>
 
@@ -1166,30 +1363,39 @@ function WatchersPanel({
 // ---------------------------------------------------------------------------
 
 function DrawerHeader({
+  projectKey,
   issueKey,
+  type,
   onClose,
   children,
 }: {
+  projectKey: string;
   issueKey: string;
+  type?: IssueDetailDto['type'];
   onClose: () => void;
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-line px-6 py-3 dark:border-gray-700">
-      <a
-        href={`/issues/${issueKey}`}
-        className="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"
-        onClick={(e) => e.preventDefault()}
-        title={issueKey}
-      >
-        {issueKey}
-        <ExternalLink className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
-      </a>
-      <div className="flex items-center gap-1">
+    <div className="flex flex-none items-center border-b border-line px-5 py-3 dark:border-gray-700">
+      <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-medium text-ink-muted dark:text-gray-400">
+        <span className="truncate">{projectKey}</span>
+        <span>/</span>
+        <a
+          href={`/issues/${issueKey}`}
+          onClick={(e) => e.preventDefault()}
+          title={issueKey}
+          className="group inline-flex items-center gap-1.5 font-semibold text-ink hover:text-brand-700 dark:text-gray-100"
+        >
+          {type && <IssueTypeIcon type={type} />}
+          {issueKey}
+          <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+        </a>
+      </div>
+      <div className="ml-auto flex items-center gap-1.5">
         {children}
         <button
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-surface-sunken hover:text-ink-muted"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-md border border-line text-ink-faint hover:bg-surface-sunken hover:text-ink-muted dark:border-gray-700"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -1446,13 +1652,15 @@ function DeliveryPanel({
 
 function Section({
   label,
+  id,
   children,
 }: {
   label: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="mt-6">
+    <section id={id} className="mt-6 scroll-mt-4">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
         {label}
       </h3>
@@ -1531,19 +1739,31 @@ function StatusMenu({
   );
 }
 
-function Field({
+function Row({
   label,
   children,
+  align = 'center',
 }: {
   label: string;
   children: ReactNode;
+  align?: 'center' | 'start';
 }) {
   return (
-    <div>
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
+    <div
+      className={clsx(
+        'flex gap-3 py-[7px]',
+        align === 'start' ? 'items-start' : 'items-center',
+      )}
+    >
+      <span
+        className={clsx(
+          'w-[92px] flex-none text-[11.5px] font-medium text-ink-muted dark:text-gray-400',
+          align === 'start' && 'pt-1',
+        )}
+      >
         {label}
       </span>
-      {children}
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

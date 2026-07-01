@@ -14,7 +14,7 @@ import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { Button } from '@/components/ui/Button';
 import { inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 
 export default function ReleasesPage() {
   const { key = '' } = useParams<{ key: string }>();
@@ -28,17 +28,11 @@ export default function ReleasesPage() {
   });
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Releases" />
-        <PageSpinner label="Loading releases…" />
-      </>
-    );
+    return <PageSpinner label="Loading releases…" />;
   }
 
   return (
     <>
-      <PageHeader title="Releases" subtitle="Versions & delivery progress" />
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page p-6 dark:bg-gray-950">
         <div className="mx-auto max-w-3xl space-y-5">
           {error && (

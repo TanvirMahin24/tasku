@@ -11,7 +11,7 @@ import { CreateLinkDto } from './dto/create-link.dto';
 
 const SUMMARY_INCLUDE = {
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
 };
 

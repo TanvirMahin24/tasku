@@ -1,47 +1,75 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  Link,
-  NavLink,
-  Outlet,
-  useNavigate,
-  useParams,
-} from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  CheckCircle2,
-  ChevronsUpDown,
-  Columns3,
-  GanttChartSquare,
   Home,
-  LayoutDashboard,
-  ListTodo,
+  LayoutGrid,
   LogOut,
   Monitor,
   Moon,
-  Package,
   Plus,
-  Rows3,
   Search,
-  Settings,
+  Star,
   Sun,
+  Table2,
   Users,
-  BarChart3,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { projectsApi } from '@/lib/api';
+import type { ProjectDto } from '@tasku/types';
+import { projectsApi, viewsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { NotificationsBell } from '@/components/NotificationsBell';
 import { CommandPalette } from '@/components/CommandPalette';
+import { CreateIssueModal } from '@/components/CreateIssueModal';
+
+// Deterministic per-space accent from the reference design palette.
+const SPACE_COLORS = [
+  '#0C66E4',
+  '#8270DB',
+  '#00857A',
+  '#E9730C',
+  '#6554C0',
+  '#1D9BAD',
+  '#E2483D',
+  '#22A06B',
+];
+export function spaceColor(key: string): string {
+  let sum = 0;
+  for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
+  return SPACE_COLORS[sum % SPACE_COLORS.length];
+}
+
+// ponytail: starred spaces live in localStorage — no backend for a per-browser
+// preference. Swap for an API-backed field if it needs to sync across devices.
+const STAR_KEY = 'tori:starredSpaces';
+function useStarredSpaces() {
+  const [starred, setStarred] = useState<Set<string>>(() => {
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(STAR_KEY) ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+  const toggle = (key: string) =>
+    setStarred((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      localStorage.setItem(STAR_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  return { starred, toggle };
+}
 
 export function AppLayout() {
   const { key } = useParams<{ key: string }>();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const { starred, toggle } = useStarredSpaces();
 
   const { data: projects = [] } = useQuery({
     queryKey: qk.projects,
@@ -49,6 +77,12 @@ export function AppLayout() {
   });
 
   const activeProject = projects.find((p) => p.key === key) ?? null;
+  const starredProjects = projects.filter((p) => starred.has(p.key));
+
+  const { data: starredViews = [] } = useQuery({
+    queryKey: qk.views(true),
+    queryFn: () => viewsApi.list(true),
+  });
 
   // Global ⌘K / Ctrl-K to toggle the command palette.
   useEffect(() => {
@@ -65,117 +99,115 @@ export function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-surface-page dark:bg-gray-950">
       {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-line-soft bg-white text-ink-soft dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
-        <Link
-          to="/"
-          className="flex items-center gap-2 px-4 py-4 text-ink hover:opacity-90 dark:text-white"
-        >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-600 text-white">
-            <CheckCircle2 className="h-4 w-4" />
-          </span>
-          <span className="text-lg font-bold tracking-tight">Tori</span>
-        </Link>
-
-        <div className="px-3">
-          <ProjectSwitcher
-            projects={projects}
-            activeKey={key}
-            onSelect={(k) => navigate(`/projects/${k}/board`)}
-          />
+      <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-white text-ink-soft dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
+        {/* Logo + create */}
+        <div className="flex items-center gap-2.5 px-4 py-3.5">
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90">
+            <img src="/logo.svg" alt="Tori" className="h-[26px] w-[26px]" />
+            <span className="text-[15px] font-extrabold tracking-[-0.02em] text-ink dark:text-white">
+              Tori
+            </span>
+          </Link>
+          <button
+            onClick={() =>
+              activeProject ? setCreateOpen(true) : setPaletteOpen(true)
+            }
+            title="Create issue"
+            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-brand-600 text-white shadow-[0_2px_6px_rgba(232,51,48,.4)] hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.6} />
+          </button>
         </div>
 
-        <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
-          <button
-            onClick={() => setPaletteOpen(true)}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
-          >
-            <Search className="h-4 w-4" />
-            <span className="flex-1 text-left">Search</span>
-            <kbd className="rounded border border-line bg-surface-sunken px-1.5 py-0.5 text-[10px] font-medium text-ink-faint dark:border-white/15 dark:bg-white/5 dark:text-gray-400">
-              ⌘K
-            </kbd>
-          </button>
-          <SidebarLink to="/dashboard" icon={Home}>
-            Dashboard
-          </SidebarLink>
-          <SidebarLink to="/" icon={ListTodo} end>
-            Spaces
-          </SidebarLink>
-          <SidebarLink to="/teams" icon={Users}>
-            Teams
-          </SidebarLink>
+        {/* Search */}
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="mx-3 mb-3 flex h-8 items-center gap-2 rounded-md border border-line px-2.5 text-[12.5px] text-ink-faint hover:bg-surface-sunken dark:border-white/10 dark:hover:bg-white/10"
+        >
+          <Search className="h-[13px] w-[13px]" />
+          <span>Search</span>
+          <kbd className="ml-auto rounded border border-line px-1 py-px font-mono text-[10px] font-semibold text-ink-faint dark:border-white/15">
+            ⌘K
+          </kbd>
+        </button>
 
-          {activeProject && (
+        <nav className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin">
+          {/* Top-level nav */}
+          <div className="flex flex-col gap-px">
+            <SidebarLink to="/dashboard" icon={Home}>
+              Your work
+            </SidebarLink>
+            <SidebarLink to="/" icon={LayoutGrid} end>
+              Spaces
+            </SidebarLink>
+            <SidebarLink to="/teams" icon={Users}>
+              Teams
+            </SidebarLink>
+            <SidebarLink to="/views" icon={Table2} end>
+              Views
+            </SidebarLink>
+            {starredViews.map((v) => (
+              <NavLink
+                key={v.id}
+                to={`/views/${v.id}`}
+                className={({ isActive }) =>
+                  clsx(
+                    'ml-6 flex items-center gap-2 rounded-md py-[6px] pl-2.5 pr-2 text-[12.5px] transition-colors',
+                    isActive
+                      ? 'bg-brand-50 font-semibold text-brand-600 dark:bg-brand-600/25 dark:text-brand-200'
+                      : 'font-medium text-ink-soft hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-white/10',
+                  )
+                }
+              >
+                <Star className="h-3 w-3 shrink-0" fill="#FCA700" stroke="#FCA700" />
+                <span className="truncate">{v.title}</span>
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Starred */}
+          {starredProjects.length > 0 && (
             <>
-              <div className="flex items-center gap-2 px-2 pb-1 pt-3">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-brand-600 text-[9px] font-bold text-white">
-                  {activeProject.key.slice(0, 1)}
-                </span>
-                <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-                  {activeProject.name}
-                </p>
+              <SectionHeader icon={Star} iconFilled>
+                Starred
+              </SectionHeader>
+              <div className="flex flex-col gap-px">
+                {starredProjects.map((p) => (
+                  <SpaceRow
+                    key={p.key}
+                    project={p}
+                    active={p.key === key}
+                    starred
+                    onToggleStar={() => toggle(p.key)}
+                  />
+                ))}
               </div>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/overview`}
-                icon={LayoutDashboard}
-                iconColor="#8270DB"
-              >
-                Overview
-              </SidebarLink>
-              <SidebarLink to={`/projects/${activeProject.key}/board`} icon={Columns3} iconColor="#1868DB">
-                Board
-              </SidebarLink>
-              <SidebarLink to={`/projects/${activeProject.key}/list`} icon={Rows3} iconColor="#22A06B">
-                List
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/timeline`}
-                icon={GanttChartSquare}
-                iconColor="#1D9BAD"
-              >
-                Timeline
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/backlog`}
-                icon={ListTodo}
-                iconColor="#E9730C"
-              >
-                Backlog
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/report`}
-                icon={BarChart3}
-                iconColor="#0C66E4"
-              >
-                Sprint report
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/reports`}
-                icon={BarChart3}
-                iconColor="#6554C0"
-              >
-                Reports
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/releases`}
-                icon={Package}
-                iconColor="#216E4E"
-              >
-                Releases
-              </SidebarLink>
-              <SidebarLink
-                to={`/projects/${activeProject.key}/settings`}
-                icon={Settings}
-                iconColor="#5E6C84"
-              >
-                Settings
-              </SidebarLink>
             </>
           )}
+
+          {/* All spaces */}
+          <SectionHeader icon={LayoutGrid}>All spaces</SectionHeader>
+          <div className="flex flex-col gap-px">
+            {projects.length === 0 ? (
+              <p className="px-2.5 py-1.5 text-[12.5px] text-ink-faint">
+                No spaces yet
+              </p>
+            ) : (
+              projects.map((p) => (
+                <SpaceRow
+                  key={p.key}
+                  project={p}
+                  active={p.key === key}
+                  starred={starred.has(p.key)}
+                  onToggleStar={() => toggle(p.key)}
+                />
+              ))
+            )}
+          </div>
         </nav>
 
         {/* Footer: notifications + theme + user */}
-        <div className="mt-auto border-t border-line-soft p-3 dark:border-white/10">
+        <div className="mt-auto border-t border-line p-2.5 dark:border-white/10">
           <div className="flex items-center gap-2">
             <NotificationsBell />
             <ThemeToggle />
@@ -185,7 +217,9 @@ export function AppLayout() {
                 <p className="truncate text-sm font-medium text-ink dark:text-white">
                   {user?.displayName ?? '—'}
                 </p>
-                <p className="truncate text-xs text-ink-faint dark:text-gray-400">{user?.email}</p>
+                <p className="truncate text-xs text-ink-faint dark:text-gray-400">
+                  {user?.email}
+                </p>
               </div>
             </div>
             <button
@@ -209,6 +243,89 @@ export function AppLayout() {
         onClose={() => setPaletteOpen(false)}
         projectKey={key}
       />
+      {activeProject && (
+        <CreateIssueModal
+          projectKey={activeProject.key}
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon: Icon,
+  iconFilled,
+  children,
+}: {
+  icon: typeof Star;
+  iconFilled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mx-2 mb-1 mt-3 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+      <Icon
+        className="h-[11px] w-[11px]"
+        {...(iconFilled ? { fill: '#FCA700', stroke: '#FCA700' } : {})}
+      />
+      {children}
+    </div>
+  );
+}
+
+/** A space (project) row: colored dot + name link + star toggle. */
+function SpaceRow({
+  project,
+  active,
+  starred,
+  onToggleStar,
+}: {
+  project: ProjectDto;
+  active: boolean;
+  starred: boolean;
+  onToggleStar: () => void;
+}) {
+  return (
+    <div
+      className={clsx(
+        'group flex items-center gap-2.5 rounded-md pl-2.5 pr-1.5 transition-colors',
+        active
+          ? 'bg-brand-50 dark:bg-brand-600/25'
+          : 'hover:bg-surface-sunken dark:hover:bg-white/10',
+      )}
+    >
+      <NavLink
+        to={`/projects/${project.key}`}
+        className={clsx(
+          'flex min-w-0 flex-1 items-center gap-2.5 py-[7px] text-[12.5px]',
+          active
+            ? 'font-semibold text-brand-600 dark:text-brand-200'
+            : 'font-medium text-ink-soft dark:text-gray-300',
+        )}
+      >
+        <span
+          className="h-2 w-2 shrink-0 rounded-[3px]"
+          style={{ backgroundColor: spaceColor(project.key) }}
+        />
+        <span className="truncate">{project.name}</span>
+      </NavLink>
+      <button
+        onClick={onToggleStar}
+        title={starred ? 'Unstar' : 'Star'}
+        className={clsx(
+          'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded',
+          starred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          'hover:bg-black/5 dark:hover:bg-white/10',
+        )}
+      >
+        <Star
+          className="h-[15px] w-[15px]"
+          {...(starred
+            ? { fill: '#FCA700', stroke: '#FCA700' }
+            : { stroke: '#B3BAC5' })}
+        />
+      </button>
     </div>
   );
 }
@@ -239,10 +356,10 @@ function SidebarLink({
   iconColor,
 }: {
   to: string;
-  icon: typeof Columns3;
+  icon: typeof Home;
   children: ReactNode;
   end?: boolean;
-  /** When set, render the icon in a small colored rounded-square (project items). */
+  /** When set, render the icon in a small colored rounded-square (space items). */
   iconColor?: string;
 }) {
   return (
@@ -270,83 +387,5 @@ function SidebarLink({
       )}
       {children}
     </NavLink>
-  );
-}
-
-function ProjectSwitcher({
-  projects,
-  activeKey,
-  onSelect,
-}: {
-  projects: { key: string; name: string }[];
-  activeKey?: string;
-  onSelect: (key: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const active = projects.find((p) => p.key === activeKey);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-md border border-line bg-white px-2.5 py-2 text-left text-sm hover:bg-surface-sunken dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-      >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-brand-600 text-[11px] font-bold text-white">
-          {active ? active.key.slice(0, 2) : '—'}
-        </span>
-        <span className="min-w-0 flex-1 truncate font-medium text-ink dark:text-white">
-          {active ? active.name : 'Select project'}
-        </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-ink-faint" />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-11 z-30 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800">
-          <div className="max-h-64 overflow-y-auto scrollbar-thin">
-            {projects.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-gray-400">No projects yet</p>
-            ) : (
-              projects.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => {
-                    onSelect(p.key);
-                    setOpen(false);
-                  }}
-                  className={clsx(
-                    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700/60',
-                    p.key === activeKey
-                      ? 'font-semibold text-brand-700 dark:text-brand-300'
-                      : 'text-gray-700 dark:text-gray-200',
-                  )}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                    {p.key.slice(0, 2)}
-                  </span>
-                  <span className="truncate">{p.name}</span>
-                </button>
-              ))
-            )}
-          </div>
-          <Link
-            to="/"
-            onClick={() => setOpen(false)}
-            className="mt-1 flex items-center gap-2 border-t border-gray-100 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:text-brand-300 dark:hover:bg-gray-700/60"
-          >
-            <Plus className="h-4 w-4" /> New project
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }

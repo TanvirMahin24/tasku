@@ -29,7 +29,7 @@ import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { IssueTypeIcon, PriorityIcon, StatusPill } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
 
 type SortField = NonNullable<IssueListQuery['orderBy']>;
@@ -122,8 +122,6 @@ export default function ListPage() {
 
   return (
     <>
-      <PageHeader title="List" subtitle="All issues in this project" />
-
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-line-soft dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-2.5">
         <div className="relative">
@@ -332,7 +330,9 @@ function BulkBar({
         <Select
           value=""
           onChange={(e) =>
-            onApply({ teamId: e.target.value === '__none__' ? null : e.target.value })
+            onApply({
+              teamIds: e.target.value === '__none__' ? [] : [e.target.value],
+            })
           }
           placeholder="Set team…"
           className="h-9 w-auto"
@@ -465,7 +465,17 @@ function IssueRow({
           </span>
         </div>
       </Td>
-      <Td>{issue.team ? <TeamChip team={issue.team} /> : <span className="text-gray-300">—</span>}</Td>
+      <Td>
+        {issue.teams.length ? (
+          <span className="flex flex-wrap gap-1">
+            {issue.teams.map((t) => (
+              <TeamChip key={t.id} team={t} />
+            ))}
+          </span>
+        ) : (
+          <span className="text-gray-300">—</span>
+        )}
+      </Td>
       <Td>
         <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
           <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />

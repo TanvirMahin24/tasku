@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
 import { ColorPicker } from '@/pages/TeamsPage';
+import { KnowledgeBase } from '@/components/KnowledgeBase';
 
 export default function TeamPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -247,6 +248,14 @@ export default function TeamPage() {
               pending={addMember.isPending}
               onAdd={(userId, role) => addMember.mutate({ userId, role })}
             />
+          </section>
+
+          {/* Knowledge base */}
+          <section className="rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-muted dark:text-gray-400">
+              Knowledge base
+            </h2>
+            <KnowledgeBase scope={{ kind: 'team', teamId: team.id }} />
           </section>
         </div>
       </div>

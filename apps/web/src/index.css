@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* brand accent: #e83330 (see tailwind.config.js `brand`) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -51,6 +52,14 @@
   }
   .field {
     @apply block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500;
+  }
+}
+
+@layer components {
+  /* Placeholder for the contentEditable mention input (MentionInput). */
+  .ta-mention-input.is-empty::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none text-gray-400 dark:text-gray-500;
   }
 }
 

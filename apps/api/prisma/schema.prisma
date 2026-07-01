@@ -35,6 +35,11 @@ model User {
   worklogs      Worklog[]
   savedFilters  SavedFilter[]
   boardStars    BoardStar[]
+  knowledgeDocs KnowledgeDoc[]
+  viewsCreated     View[]     @relation("ViewCreator")
+  viewsResponsible View[]     @relation("ViewResponsible")
+  viewStars        ViewStar[]
+  viewActivity     ViewActivity[]
 }
 
 enum Role {
@@ -67,6 +72,7 @@ model Project {
   description String?
   leadId      String?
   issueSeq    Int      @default(0) // per-project monotonic counter
+  defaultTab  String   @default("board") // space tab opened by default
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -137,7 +143,6 @@ model Issue {
   assigneeId  String?
   parentId    String?   // epic link / subtask parent
   sprintId    String?
-  teamId      String?
   storyPoints Int?
   originalEstimate Int? // minutes; logged time = sum of worklogs
   startDate   DateTime? // timeline / roadmap
@@ -150,7 +155,7 @@ model Issue {
   status      Status        @relation(fields: [statusId], references: [id])
   reporter    User          @relation("Reporter", fields: [reporterId], references: [id])
   assignee    User?         @relation("Assignee", fields: [assigneeId], references: [id])
-  team        Team?         @relation(fields: [teamId], references: [id])
+  teams       Team[]        @relation("IssueTeams")
   parent      Issue?        @relation("IssueHierarchy", fields: [parentId], references: [id])
   children    Issue[]       @relation("IssueHierarchy")
   sprint      Sprint?       @relation(fields: [sprintId], references: [id])
@@ -165,11 +170,11 @@ model Issue {
   worklogs    Worklog[]
   customValues CustomFieldValue[]
   versions    Version[]         @relation("IssueVersions")
+  knowledgeDocs KnowledgeDoc[]
 
   @@index([projectId])
   @@index([statusId])
   @@index([sprintId])
-  @@index([teamId])
   @@index([parentId])
 }
 
@@ -273,12 +278,18 @@ model Comment {
   id        String   @id @default(cuid())
   issueId   String
   authorId  String
+  parentId  String? // one-level reply thread (a reply's parent is a top-level comment)
   body      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author User  @relation(fields: [authorId], references: [id])
+  issue   Issue     @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author  User      @relation(fields: [authorId], references: [id])
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([issueId])
+  @@index([parentId])
 }
 
 model Attachment {
@@ -346,8 +357,11 @@ model Team {
   createdAt   DateTime @default(now())
 
   members TeamMember[]
-  issues  Issue[]
+  issues  Issue[]        @relation("IssueTeams")
   boards  Board[]
+  knowledgeDocs KnowledgeDoc[]
+  viewsScoped     View[] @relation("ViewScopeTeam")
+  viewsAssociated View[] @relation("ViewTeams")
 }
 
 model TeamMember {
@@ -525,4 +539,126 @@ model Version {
 
   @@unique([projectId, name])
   @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge base — a doc (uploaded FILE or external LINK, e.g. a Google Doc /
+// Sheet) owned by exactly one Team OR one Issue. Issues inherit their
+// ancestors' docs (computed at read time, ancestors-only). A doc can be
+// imported into another KB as a live reference (isImport + importedFromId) —
+// its content resolves from the source doc.
+// ---------------------------------------------------------------------------
+
+enum KnowledgeType {
+  FILE
+  LINK
+}
+
+enum KnowledgeLinkKind {
+  GOOGLE_DOC
+  GOOGLE_SHEET
+  GOOGLE_SLIDES
+  GENERIC
+}
+
+model KnowledgeDoc {
+  id       String            @id @default(cuid())
+  title    String
+  type     KnowledgeType
+
+  // LINK docs
+  url      String?
+  linkKind KnowledgeLinkKind?
+
+  // FILE docs — bytes on disk as `${id}${ext}`, streamed via /knowledge/:id/raw
+  filename String?
+  mimeType String?
+  size     Int?
+
+  // Owner: exactly one of teamId / issueId is set.
+  teamId  String?
+  issueId String?
+
+  // Live import: a reference to a doc in another KB (content resolves from it).
+  isImport       Boolean @default(false)
+  importedFromId String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team         Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  issue        Issue?         @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  importedFrom KnowledgeDoc?  @relation("KnowledgeImport", fields: [importedFromId], references: [id], onDelete: SetNull)
+  imports      KnowledgeDoc[] @relation("KnowledgeImport")
+  createdBy    User           @relation(fields: [createdById], references: [id])
+
+  @@index([teamId])
+  @@index([issueId])
+  @@index([importedFromId])
+}
+
+// ---------------------------------------------------------------------------
+// Views — a saved, filtered cross-space issue table with a configurable column
+// set (standard + custom fields, ordered, pinnable). Global or team-scoped,
+// starrable, with display-only metadata. Soft-deleted (archived) + audited.
+// ---------------------------------------------------------------------------
+
+enum ViewScope {
+  GLOBAL
+  TEAM
+}
+
+model View {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  scope         ViewScope @default(GLOBAL)
+  teamId        String? // scope team (when scope = TEAM)
+  // display-only metadata
+  startDate     DateTime?
+  endDate       DateTime?
+  responsibleId String?
+  // filter + column config
+  criteria      Json // IssueFilterCriteria
+  columns       Json // ViewColumn[] = [{ key, pinned? }]
+  // lifecycle
+  archived      Boolean   @default(false)
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  scopeTeam   Team?          @relation("ViewScopeTeam", fields: [teamId], references: [id], onDelete: SetNull)
+  responsible User?          @relation("ViewResponsible", fields: [responsibleId], references: [id])
+  createdBy   User           @relation("ViewCreator", fields: [createdById], references: [id])
+  teams       Team[]         @relation("ViewTeams") // associated teams (metadata)
+  stars       ViewStar[]
+  activity    ViewActivity[]
+
+  @@index([teamId])
+  @@index([archived])
+}
+
+model ViewStar {
+  id     String @id @default(cuid())
+  viewId String
+  userId String
+
+  view View @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([viewId, userId])
+  @@index([userId])
+}
+
+model ViewActivity {
+  id        String   @id @default(cuid())
+  viewId    String
+  actorId   String
+  action    String // 'created' | 'updated' | 'archived' | 'restored'
+  detail    String?
+  createdAt DateTime @default(now())
+
+  view  View @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id])
 }

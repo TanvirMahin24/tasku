@@ -21,7 +21,7 @@ export function IssueCardContent({
       className={clsx(
         'group flex flex-col gap-[9px] rounded-lg border border-line bg-white p-[10px] shadow-card transition-shadow dark:border-gray-700 dark:bg-gray-800',
         dragging
-          ? 'shadow-raise ring-2 ring-[#4C9AFF]'
+          ? 'shadow-raise ring-2 ring-brand-300'
           : 'hover:border-[#B3B9C4] dark:hover:border-gray-600',
       )}
     >
@@ -29,9 +29,11 @@ export function IssueCardContent({
         {issue.title}
       </p>
 
-      {(issue.labels.length > 0 || issue.team) && (
+      {(issue.labels.length > 0 || issue.teams.length > 0) && (
         <div className="flex flex-wrap items-center gap-1">
-          {issue.team && <TeamChip team={issue.team} />}
+          {issue.teams.map((t) => (
+            <TeamChip key={t.id} team={t} />
+          ))}
           {issue.labels.map((l) => (
             <LabelBadge key={l.id} label={l} />
           ))}

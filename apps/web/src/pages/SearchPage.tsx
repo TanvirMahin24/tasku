@@ -440,8 +440,12 @@ function ResultsTable({
                 </div>
               </td>
               <td className="px-3 py-2.5 align-middle">
-                {issue.team ? (
-                  <TeamChip team={issue.team} />
+                {issue.teams.length ? (
+                  <span className="flex flex-wrap gap-1">
+                    {issue.teams.map((t) => (
+                      <TeamChip key={t.id} team={t} />
+                    ))}
+                  </span>
                 ) : (
                   <span className="text-ink-faint">—</span>
                 )}

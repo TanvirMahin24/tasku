@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
+  addDays,
   differenceInCalendarDays,
   eachMonthOfInterval,
+  eachWeekOfInterval,
   endOfMonth,
   format,
   max as maxDate,
@@ -16,14 +18,15 @@ import { projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { ISSUE_TYPE_META, formatDate } from '@/lib/format';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
+import { useProjectMeta } from '@/hooks/useProjectMeta';
 import { IssueTypeIcon } from '@/components/ui/icons';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
 
-const LEFT_COL_WIDTH = 280;
-const DAY_PX = 8; // pixels per day on the time axis
+const LEFT = 230; // px — label column width
+const WEEK_OPTS = { weekStartsOn: 1 as const };
 
 export default function TimelinePage() {
   const { key = '' } = useParams<{ key: string }>();
@@ -36,21 +39,18 @@ export default function TimelinePage() {
     enabled: !!key,
   });
 
-  if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Timeline" />
-        <PageSpinner label="Loading timeline…" />
-      </>
-    );
-  }
+  const { statuses } = useProjectMeta(key);
+  const doneIds = useMemo(
+    () => new Set(statuses.filter((s) => s.category === 'DONE').map((s) => s.id)),
+    [statuses],
+  );
 
+  if (isLoading) return <PageSpinner label="Loading timeline…" />;
   if (!timeline) {
     return (
-      <>
-        <PageHeader title="Timeline" />
-        <div className="p-6 text-sm text-ink-muted dark:text-gray-400">Project not found.</div>
-      </>
+      <div className="p-6 text-sm text-ink-muted dark:text-gray-400">
+        Project not found.
+      </div>
     );
   }
 
@@ -58,8 +58,7 @@ export default function TimelinePage() {
 
   return (
     <>
-      <PageHeader title="Timeline" subtitle="Roadmap of scheduled work" />
-      <div className="flex-1 overflow-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
+      <div className="flex-1 overflow-auto scrollbar-thin bg-surface-page p-6 dark:bg-gray-950">
         {!hasScheduled && timeline.unscheduled.length === 0 ? (
           <EmptyState
             icon={<CalendarRange className="h-10 w-10" />}
@@ -68,21 +67,17 @@ export default function TimelinePage() {
           />
         ) : (
           <div className="space-y-6">
-            {hasScheduled ? (
+            {hasScheduled && (
               <Gantt
                 timeline={timeline}
-                onOpen={(issueKey) => setOpenIssueKey(issueKey)}
+                doneIds={doneIds}
+                onOpen={setOpenIssueKey}
               />
-            ) : (
-              <p className="rounded-xl border border-dashed border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-6 text-center text-sm text-ink-muted dark:text-gray-400">
-                No issues have start and due dates yet.
-              </p>
             )}
-
             {timeline.unscheduled.length > 0 && (
               <Unscheduled
                 issues={timeline.unscheduled}
-                onOpen={(issueKey) => setOpenIssueKey(issueKey)}
+                onOpen={setOpenIssueKey}
               />
             )}
           </div>
@@ -100,10 +95,6 @@ export default function TimelinePage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Gantt
-// ---------------------------------------------------------------------------
-
 function dateOf(value: string | null): Date | null {
   if (!value) return null;
   const d = new Date(value);
@@ -112,16 +103,18 @@ function dateOf(value: string | null): Date | null {
 
 function Gantt({
   timeline,
+  doneIds,
   onOpen,
 }: {
   timeline: TimelineDto;
+  doneIds: Set<string>;
   onOpen: (issueKey: string) => void;
 }) {
+  const [scale, setScale] = useState<'months' | 'weeks'>('months');
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  // Determine the overall range from the explicit range or scanned dates.
-  const { rangeStart, months, totalWidth } = useMemo(() => {
-    const dates: Date[] = [];
+  const { rangeStart, totalDays, months, weeks } = useMemo(() => {
+    const dates: Date[] = [new Date()]; // always include today so its line shows
     const collect = (i: IssueSummaryDto) => {
       const s = dateOf(i.startDate);
       const e = dateOf(i.dueDate);
@@ -132,99 +125,171 @@ function Gantt({
       collect(r.issue);
       r.children.forEach(collect);
     });
-    const explicitStart = dateOf(timeline.rangeStart);
-    const explicitEnd = dateOf(timeline.rangeEnd);
-    if (explicitStart) dates.push(explicitStart);
-    if (explicitEnd) dates.push(explicitEnd);
+    const s = dateOf(timeline.rangeStart);
+    const e = dateOf(timeline.rangeEnd);
+    if (s) dates.push(s);
+    if (e) dates.push(e);
 
-    const today = new Date();
-    const rawStart = dates.length ? minDate(dates) : today;
-    const rawEnd = dates.length ? maxDate(dates) : today;
-    const start = startOfMonth(rawStart);
-    const end = endOfMonth(rawEnd);
-    const monthsList = eachMonthOfInterval({ start, end });
+    const start = startOfMonth(minDate(dates));
+    const end = endOfMonth(maxDate(dates));
     const days = differenceInCalendarDays(end, start) + 1;
+    const pctOf = (d: Date) => (differenceInCalendarDays(d, start) / days) * 100;
     return {
       rangeStart: start,
-      months: monthsList,
-      totalWidth: days * DAY_PX,
+      totalDays: days,
+      months: eachMonthOfInterval({ start, end }).map((m) => ({
+        date: m,
+        days: differenceInCalendarDays(endOfMonth(m), startOfMonth(m)) + 1,
+      })),
+      weeks: eachWeekOfInterval({ start, end }, WEEK_OPTS)
+        .map((d) => ({ pct: pctOf(d), label: format(d, 'd') }))
+        .filter((w) => w.pct >= 0 && w.pct < 100),
     };
   }, [timeline]);
 
-  function offsetPx(date: Date): number {
-    return differenceInCalendarDays(date, rangeStart) * DAY_PX;
-  }
+  const pct = (d: Date) =>
+    Math.max(0, Math.min(100, (differenceInCalendarDays(d, rangeStart) / totalDays) * 100));
+  const todayPct = pct(new Date());
 
   function toggle(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
 
+  const innerStyle =
+    scale === 'weeks'
+      ? { width: `${Math.max(weeks.length, 1) * 88}px`, minWidth: '100%' }
+      : { width: '100%' };
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-line dark:border-gray-700 bg-white shadow-card dark:bg-gray-900 scrollbar-thin">
-      <div style={{ minWidth: LEFT_COL_WIDTH + totalWidth }}>
-        {/* Header: months */}
-        <div className="flex border-b border-line dark:border-gray-700 bg-surface-sunken dark:bg-gray-800/50">
-          <div
-            className="shrink-0 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400"
-            style={{ width: LEFT_COL_WIDTH }}
+    <div>
+      {/* scale toggle */}
+      <div className="mb-3 flex items-center gap-1.5">
+        {(['months', 'weeks'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setScale(s)}
+            className={
+              scale === s
+                ? 'h-[30px] rounded-md border border-brand-600 bg-brand-50 px-3 text-xs font-semibold capitalize text-brand-600 dark:bg-brand-500/15'
+                : 'h-[30px] rounded-md border border-line bg-white px-3 text-xs font-medium capitalize text-ink-soft hover:bg-surface-sunken dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'
+            }
           >
-            Issue
-          </div>
-          <div className="relative" style={{ width: totalWidth }}>
-            <div className="flex h-full">
-              {months.map((m) => {
-                const monthDays =
-                  differenceInCalendarDays(endOfMonth(m), startOfMonth(m)) + 1;
-                return (
-                  <div
-                    key={m.toISOString()}
-                    className="border-l border-line dark:border-gray-700 px-2 py-2 text-xs font-medium text-ink-muted dark:text-gray-400"
-                    style={{ width: monthDays * DAY_PX }}
-                  >
-                    {format(m, 'MMM yyyy')}
-                  </div>
-                );
-              })}
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto rounded-[10px] border border-line bg-white scrollbar-thin dark:border-gray-700 dark:bg-gray-900">
+        <div style={innerStyle}>
+          {/* Header — months */}
+          <div className="flex border-b border-line bg-surface-page dark:border-gray-700 dark:bg-gray-800/50">
+            <div
+              className="shrink-0 border-r border-line-soft dark:border-gray-800"
+              style={{ width: LEFT }}
+            />
+            <div className="flex flex-1">
+              {months.map((m) => (
+                <div
+                  key={m.date.toISOString()}
+                  style={{ flex: m.days }}
+                  className="border-r border-line px-3 pb-1 pt-2 text-[11px] font-semibold text-ink-muted dark:border-gray-700 dark:text-gray-400"
+                >
+                  {format(m.date, 'MMM yyyy')}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Rows */}
-        <div className="relative">
-          {timeline.rows.map((row) => {
-            const isEpic = row.children.length > 0;
-            const isOpen = expanded.has(row.issue.id);
-            return (
-              <div key={row.issue.id}>
-                <GanttRow
-                  issue={row.issue}
-                  totalWidth={totalWidth}
-                  offsetPx={offsetPx}
-                  expandable={isEpic}
-                  expanded={isOpen}
-                  onToggle={() => toggle(row.issue.id)}
-                  onOpen={onOpen}
+          {/* Header — week ticks */}
+          <div className="flex border-b border-line bg-surface-page dark:border-gray-700 dark:bg-gray-800/50">
+            <div
+              className="shrink-0 border-r border-line-soft dark:border-gray-800"
+              style={{ width: LEFT }}
+            />
+            <div className="relative h-5 flex-1">
+              {weeks.map((w, i) => (
+                <span
+                  key={i}
+                  style={{ left: `${w.pct}%` }}
+                  className="absolute top-0.5 pl-1 font-mono text-[9px] text-ink-faint"
+                >
+                  {w.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Rows */}
+          <div className="relative">
+            {/* week grid lines (behind rows) */}
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 z-0"
+              style={{ left: LEFT }}
+            >
+              {weeks.map((w, i) => (
+                <div
+                  key={i}
+                  style={{ left: `${w.pct}%` }}
+                  className="absolute inset-y-0 border-l border-[#F4F5F7] dark:border-gray-800"
                 />
-                {isEpic &&
-                  isOpen &&
-                  row.children.map((child) => (
-                    <GanttRow
-                      key={child.id}
-                      issue={child}
-                      totalWidth={totalWidth}
-                      offsetPx={offsetPx}
-                      depth={1}
-                      onOpen={onOpen}
-                    />
-                  ))}
+              ))}
+            </div>
+
+            {timeline.rows.map((row) => {
+              const isEpic = row.issue.type === 'EPIC' || row.children.length > 0;
+              const open = expanded.has(row.issue.id);
+              const progress = row.children.length
+                ? Math.round(
+                    (row.children.filter((c) => doneIds.has(c.statusId)).length /
+                      row.children.length) *
+                      100,
+                  )
+                : null;
+              return (
+                <div key={row.issue.id}>
+                  <GanttRow
+                    issue={row.issue}
+                    epic={isEpic}
+                    progress={progress}
+                    pct={pct}
+                    expandable={row.children.length > 0}
+                    expanded={open}
+                    onToggle={() => toggle(row.issue.id)}
+                    onOpen={onOpen}
+                  />
+                  {open &&
+                    row.children.map((child) => (
+                      <GanttRow
+                        key={child.id}
+                        issue={child}
+                        depth={1}
+                        pct={pct}
+                        onOpen={onOpen}
+                      />
+                    ))}
+                </div>
+              );
+            })}
+
+            {/* today marker (above rows) */}
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 z-20"
+              style={{ left: LEFT }}
+            >
+              <div
+                className="absolute inset-y-0 w-0.5 bg-[#E2483D]/70"
+                style={{ left: `${todayPct}%` }}
+              >
+                <span className="absolute -left-4 top-0 rounded-[3px] bg-[#E2483D] px-1 py-px text-[8.5px] font-bold text-white">
+                  TODAY
+                </span>
               </div>
-            );
-          })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -233,18 +298,20 @@ function Gantt({
 
 function GanttRow({
   issue,
-  totalWidth,
-  offsetPx,
   depth = 0,
+  epic = false,
+  progress = null,
+  pct,
   expandable,
   expanded,
   onToggle,
   onOpen,
 }: {
   issue: IssueSummaryDto;
-  totalWidth: number;
-  offsetPx: (d: Date) => number;
   depth?: number;
+  epic?: boolean;
+  progress?: number | null;
+  pct: (d: Date) => number;
   expandable?: boolean;
   expanded?: boolean;
   onToggle?: () => void;
@@ -252,29 +319,28 @@ function GanttRow({
 }) {
   const start = dateOf(issue.startDate);
   const due = dateOf(issue.dueDate);
-  const meta = ISSUE_TYPE_META[issue.type];
-  const color = issue.team?.color ?? meta.color;
+  const color = issue.teams[0]?.color ?? ISSUE_TYPE_META[issue.type].color;
 
   let left = 0;
   let width = 0;
   if (start || due) {
     const s = start ?? due!;
     const e = due ?? start!;
-    left = Math.max(0, offsetPx(s));
-    width = Math.max(DAY_PX, offsetPx(e) - offsetPx(s) + DAY_PX);
+    left = pct(s);
+    width = Math.max(1.5, pct(addDays(e, 1)) - pct(s));
   }
 
   return (
-    <div className="flex items-center border-b border-line-soft dark:border-gray-700 hover:bg-surface-sunken/60 dark:hover:bg-gray-700/60">
-      {/* Left label */}
+    <div className="relative z-10 flex h-[38px] items-center border-b border-line-soft last:border-b-0 hover:bg-surface-sunken/50 dark:border-gray-800">
+      {/* label */}
       <div
-        className="flex shrink-0 items-center gap-1.5 px-3 py-2"
-        style={{ width: LEFT_COL_WIDTH, paddingLeft: 12 + depth * 18 }}
+        className="flex shrink-0 items-center gap-2 self-stretch border-r border-line-soft dark:border-gray-800"
+        style={{ width: LEFT, paddingLeft: 12 + depth * 16, paddingRight: 12 }}
       >
         {expandable ? (
           <button
             onClick={onToggle}
-            className="flex h-4 w-4 items-center justify-center text-ink-faint hover:text-ink-muted dark:hover:text-gray-400"
+            className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-faint hover:text-ink-muted"
           >
             {expanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -283,30 +349,63 @@ function GanttRow({
             )}
           </button>
         ) : (
-          <span className="w-4" />
+          <span className="w-4 shrink-0" />
         )}
-        <IssueTypeIcon type={issue.type} />
+        <IssueTypeIcon type={issue.type} boxed />
         <button
           onClick={() => onOpen(issue.key)}
-          className="min-w-0 flex-1 truncate text-left text-sm text-ink-soft dark:text-gray-200 hover:text-brand-700 dark:hover:text-brand-300"
           title={issue.title}
+          className={`min-w-0 flex-1 truncate text-left text-[12px] hover:text-brand-700 dark:hover:text-brand-300 ${
+            epic
+              ? 'font-semibold text-ink dark:text-gray-100'
+              : 'font-medium text-ink-soft dark:text-gray-300'
+          }`}
         >
-          <span className="font-mono text-[11px] text-ink-faint">{issue.key}</span>{' '}
           {issue.title}
         </button>
       </div>
 
-      {/* Bar area */}
-      <div className="relative h-9" style={{ width: totalWidth }}>
+      {/* bar area */}
+      <div className="relative h-full flex-1">
         {width > 0 ? (
-          <button
-            onClick={() => onOpen(issue.key)}
-            className="absolute top-1/2 flex h-6 -translate-y-1/2 items-center overflow-hidden rounded-md px-2 text-left text-xs font-medium text-white shadow-sm transition-opacity hover:opacity-90"
-            style={{ left, width, backgroundColor: color }}
-            title={`${issue.title} · ${formatDate(issue.startDate)} → ${formatDate(issue.dueDate)}`}
-          >
-            <span className="truncate">{issue.title}</span>
-          </button>
+          epic ? (
+            <button
+              onClick={() => onOpen(issue.key)}
+              title={`${issue.title} · ${formatDate(issue.startDate)} → ${formatDate(issue.dueDate)}`}
+              className="absolute top-1/2 flex h-5 -translate-y-1/2 items-center overflow-hidden rounded-md border"
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                backgroundColor: `${color}22`,
+                borderColor: `${color}66`,
+              }}
+            >
+              {progress != null && (
+                <span
+                  className="absolute inset-y-0 left-0"
+                  style={{ width: `${progress}%`, backgroundColor: `${color}44` }}
+                />
+              )}
+              <span
+                className="relative truncate px-2 text-[10px] font-semibold"
+                style={{ color }}
+              >
+                {issue.key}
+                {progress != null ? ` · ${progress}%` : ''}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onOpen(issue.key)}
+              title={`${issue.title} · ${formatDate(issue.startDate)} → ${formatDate(issue.dueDate)}`}
+              className="absolute top-1/2 flex h-[18px] -translate-y-1/2 items-center overflow-hidden rounded-[5px] hover:opacity-90"
+              style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }}
+            >
+              <span className="truncate px-2 text-[10px] font-semibold text-white">
+                {issue.key}
+              </span>
+            </button>
+          )
         ) : (
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] italic text-ink-faint">
             no dates
@@ -317,10 +416,6 @@ function GanttRow({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Unscheduled
-// ---------------------------------------------------------------------------
-
 function Unscheduled({
   issues,
   onOpen,
@@ -329,8 +424,10 @@ function Unscheduled({
   onOpen: (issueKey: string) => void;
 }) {
   return (
-    <section className="rounded-lg border border-line dark:border-gray-700 bg-white shadow-card dark:bg-gray-900 p-5">
-      <h2 className="mb-1 text-sm font-semibold text-ink dark:text-gray-100">Unscheduled</h2>
+    <section className="rounded-[10px] border border-line bg-white p-5 shadow-card dark:border-gray-700 dark:bg-gray-900">
+      <h2 className="mb-1 text-sm font-semibold text-ink dark:text-gray-100">
+        Unscheduled
+      </h2>
       <p className="mb-3 text-xs text-ink-muted dark:text-gray-400">
         Set a start and due date on these issues to place them on the timeline.
       </p>
@@ -348,7 +445,9 @@ function Unscheduled({
               <span className="min-w-0 flex-1 truncate text-sm text-ink-soft dark:text-gray-200">
                 {issue.title}
               </span>
-              {issue.team && <TeamChip team={issue.team} />}
+              {issue.teams.map((t) => (
+                <TeamChip key={t.id} team={t} />
+              ))}
             </button>
           </li>
         ))}

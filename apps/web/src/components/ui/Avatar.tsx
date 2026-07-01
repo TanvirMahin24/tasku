@@ -27,7 +27,7 @@ export function Avatar({ user, size = 'md', className, title }: AvatarProps) {
         alt={name}
         title={tooltip}
         className={clsx(
-          'inline-block rounded-full object-cover ring-2 ring-white dark:ring-gray-900',
+          'inline-block shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-gray-900',
           SIZES[size],
           className,
         )}
@@ -40,7 +40,7 @@ export function Avatar({ user, size = 'md', className, title }: AvatarProps) {
       <span
         title="Unassigned"
         className={clsx(
-          'inline-flex items-center justify-center rounded-full bg-[#EFF1F4] text-[#8590A2] ring-2 ring-white dark:bg-gray-700 dark:text-gray-400 dark:ring-gray-900',
+          'inline-flex items-center justify-center shrink-0 rounded-full bg-[#EFF1F4] text-[#8590A2] ring-2 ring-white dark:bg-gray-700 dark:text-gray-400 dark:ring-gray-900',
           SIZES[size],
           className,
         )}
@@ -62,7 +62,7 @@ export function Avatar({ user, size = 'md', className, title }: AvatarProps) {
     <span
       title={tooltip}
       className={clsx(
-        'inline-flex select-none items-center justify-center rounded-full font-bold text-white ring-2 ring-white dark:ring-gray-900',
+        'inline-flex select-none items-center justify-center shrink-0 rounded-full font-bold text-white ring-2 ring-white dark:ring-gray-900',
         SIZES[size],
         className,
       )}

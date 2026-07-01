@@ -5,7 +5,6 @@ import {
   type ReactNode,
 } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -97,9 +96,7 @@ export function AuthShell({
     <div className="flex min-h-full items-center justify-center bg-surface-page dark:bg-gray-950 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-raise">
-            <CheckCircle2 className="h-7 w-7" />
-          </div>
+          <img src="/logo.svg" alt="Tori" className="mb-3 h-12 w-12" />
           <h1 className="text-2xl font-bold tracking-tight text-ink dark:text-gray-100">
             {title}
           </h1>

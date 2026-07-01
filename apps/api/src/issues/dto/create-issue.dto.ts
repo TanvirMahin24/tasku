@@ -52,8 +52,9 @@ export class CreateIssueDto implements ICreateIssueDto {
   labelIds?: string[];
 
   @IsOptional()
-  @IsString()
-  teamId?: string;
+  @IsArray()
+  @IsString({ each: true })
+  teamIds?: string[];
 
   @IsOptional()
   @IsISO8601()

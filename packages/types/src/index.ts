@@ -73,7 +73,15 @@ export interface ProjectDto {
   description: string | null;
   lead: UserDto | null;
   role?: Role;
+  defaultTab: string; // space tab opened by default (e.g. 'board')
   createdAt: string;
+}
+
+export interface UpdateProjectDto {
+  name?: string;
+  description?: string;
+  leadId?: string;
+  defaultTab?: string;
 }
 
 export interface StatusDto {
@@ -114,7 +122,7 @@ export interface IssueSummaryDto {
   sprintId: string | null;
   parentId: string | null;
   labels: LabelDto[];
-  team: TeamSummaryDto | null;
+  teams: TeamSummaryDto[];
   startDate: string | null;
   dueDate: string | null;
 }
@@ -125,6 +133,23 @@ export interface CommentDto {
   author: UserDto;
   createdAt: string;
   updatedAt: string;
+  parentId: string | null;
+  // Present on top-level comments (one-level threads); replies omit it.
+  replies?: CommentDto[];
+}
+
+// ---------------------------------------------------------------------------
+// Mentions (@-mentions in descriptions, comments, replies)
+// ---------------------------------------------------------------------------
+
+export type MentionType = 'user' | 'issue' | 'knowledge' | 'board';
+
+/** A single @-mentionable entity returned by the picker. */
+export interface MentionableDto {
+  type: MentionType;
+  id: string;
+  label: string; // primary text (name / issue key / doc title / board name)
+  sublabel?: string | null; // email / issue title / doc kind / etc.
 }
 
 export interface ActivityDto {
@@ -455,7 +480,7 @@ export interface CreateIssueDto {
   storyPoints?: number;
   statusId?: string;
   labelIds?: string[];
-  teamId?: string;
+  teamIds?: string[];
   startDate?: string;
   dueDate?: string;
 }
@@ -471,7 +496,7 @@ export interface UpdateIssueDto {
   sprintId?: string | null;
   storyPoints?: number | null;
   labelIds?: string[];
-  teamId?: string | null;
+  teamIds?: string[];
   startDate?: string | null;
   dueDate?: string | null;
   originalEstimate?: number | null;
@@ -620,7 +645,7 @@ export interface BulkUpdateDto {
     statusId?: string;
     assigneeId?: string | null;
     priority?: Priority;
-    teamId?: string | null;
+    teamIds?: string[];
     sprintId?: string | null;
     addLabelIds?: string[];
     removeLabelIds?: string[];
@@ -678,6 +703,8 @@ export interface MoveIssueDto {
 
 export interface CreateCommentDto {
   body: string;
+  // Set to reply to a top-level comment (one-level threads).
+  parentId?: string | null;
 }
 
 export interface CreateSprintDto {
@@ -697,3 +724,185 @@ export type WsEvent =
   | { type: 'sprint.started'; projectKey: string; sprintId: string }
   // pushed to a single user's room (not a project room)
   | { type: 'notification.created' };
+
+// ---------------------------------------------------------------------------
+// Knowledge base
+// ---------------------------------------------------------------------------
+
+export type KnowledgeType = 'FILE' | 'LINK';
+export type KnowledgeLinkKind =
+  | 'GOOGLE_DOC'
+  | 'GOOGLE_SHEET'
+  | 'GOOGLE_SLIDES'
+  | 'GENERIC';
+
+/** Where a doc surfaces from — drives the source badge on each KB card. */
+export interface KnowledgeSource {
+  // 'self' = owned by the KB being viewed; 'inherited' = from an ancestor issue.
+  origin: 'self' | 'inherited';
+  // Ancestor the doc is inherited from (when origin === 'inherited').
+  issueKey?: string;
+  issueTitle?: string;
+  // Import provenance (independent of origin — a doc can be self + imported).
+  imported: boolean;
+  importedFrom?: { kind: 'team' | 'issue'; label: string } | null;
+  // The imported source doc was deleted.
+  importBroken?: boolean;
+}
+
+export interface KnowledgeDocDto {
+  id: string;
+  title: string;
+  type: KnowledgeType;
+  url: string | null; // LINK
+  linkKind: KnowledgeLinkKind | null; // LINK
+  filename: string | null; // FILE
+  mimeType: string | null; // FILE
+  size: number | null; // FILE
+  rawUrl: string | null; // FILE stream/download url
+  createdBy: UserDto;
+  createdAt: string;
+  source: KnowledgeSource;
+  canDelete: boolean; // only docs owned by the KB being viewed are deletable here
+}
+
+export interface CreateKnowledgeLinkDto {
+  title: string;
+  url: string;
+}
+
+export interface ImportKnowledgeDto {
+  sourceDocId: string;
+}
+
+/** A doc from another KB, offered in the import picker. */
+export interface ImportableKnowledgeDocDto {
+  id: string;
+  title: string;
+  type: KnowledgeType;
+  linkKind: KnowledgeLinkKind | null;
+  ownerKind: 'team' | 'issue';
+  ownerLabel: string; // team name / issue key
+}
+
+// ---------------------------------------------------------------------------
+// Views — saved, filtered cross-space issue tables with configurable columns
+// ---------------------------------------------------------------------------
+
+export type ViewScope = 'GLOBAL' | 'TEAM';
+
+/** One column in a view table: a field key, optionally pinned (sticky-left). */
+export interface ViewColumn {
+  key: string; // standard field key OR `cf:<customFieldId>`
+  pinned?: boolean;
+}
+
+export interface ViewSummaryDto {
+  id: string;
+  title: string;
+  description: string | null;
+  scope: ViewScope;
+  scopeTeam: TeamSummaryDto | null;
+  responsible: UserDto | null;
+  teams: TeamSummaryDto[]; // associated teams (metadata)
+  startDate: string | null;
+  endDate: string | null;
+  starred: boolean;
+  archived: boolean;
+  createdBy: UserDto;
+  updatedAt: string;
+}
+
+export interface ViewDto extends ViewSummaryDto {
+  criteria: IssueFilterCriteria;
+  columns: ViewColumn[];
+  canEdit: boolean;
+}
+
+export interface CreateViewDto {
+  title: string;
+  description?: string | null;
+  scope?: ViewScope;
+  teamId?: string | null; // scope team (when scope = TEAM)
+  responsibleId?: string | null;
+  teamIds?: string[]; // associated teams
+  startDate?: string | null;
+  endDate?: string | null;
+  criteria?: IssueFilterCriteria;
+  columns?: ViewColumn[];
+}
+
+export type UpdateViewDto = Partial<CreateViewDto>;
+
+/** A resolved row in a view's results table. */
+export interface ViewRowDto {
+  id: string;
+  key: string;
+  type: IssueType;
+  title: string;
+  status: { id: string; name: string; category: StatusCategory } | null;
+  priority: Priority;
+  assignee: UserDto | null;
+  reporter: UserDto | null;
+  teams: TeamSummaryDto[];
+  labels: LabelDto[];
+  storyPoints: number | null;
+  sprintId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  projectKey: string;
+  projectName: string;
+  customValues: Record<string, CustomFieldValue>; // by custom field id
+}
+
+/** An available column offered in the view editor. */
+export interface ViewFieldDto {
+  key: string;
+  label: string;
+  kind: 'standard' | 'custom';
+  projectKey?: string; // for custom fields
+}
+
+export interface ViewActivityDto {
+  id: string;
+  action: string;
+  detail: string | null;
+  actor: UserDto;
+  createdAt: string;
+}
+
+/** Standard (non-custom) columns available to every view. */
+export const VIEW_STANDARD_FIELDS: { key: string; label: string }[] = [
+  { key: 'key', label: 'Key' },
+  { key: 'type', label: 'Type' },
+  { key: 'title', label: 'Title' },
+  { key: 'status', label: 'Status' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'assignee', label: 'Assignee' },
+  { key: 'reporter', label: 'Reporter' },
+  { key: 'teams', label: 'Teams' },
+  { key: 'labels', label: 'Labels' },
+  { key: 'storyPoints', label: 'Story points' },
+  { key: 'startDate', label: 'Start date' },
+  { key: 'dueDate', label: 'Due date' },
+  { key: 'project', label: 'Space' },
+  { key: 'updatedAt', label: 'Updated' },
+];
+
+export const VIEW_DEFAULT_COLUMNS: ViewColumn[] = [
+  { key: 'key', pinned: true },
+  { key: 'title', pinned: true },
+  { key: 'status' },
+  { key: 'assignee' },
+  { key: 'priority' },
+  { key: 'teams' },
+  { key: 'dueDate' },
+  { key: 'project' },
+];
+
+export interface UpdateLabelDto {
+  name?: string;
+  color?: string;
+}

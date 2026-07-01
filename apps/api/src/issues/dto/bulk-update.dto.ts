@@ -26,9 +26,9 @@ class BulkChangesDto {
   priority?: Priority;
 
   @IsOptional()
-  @ValidateIf((o) => o.teamId !== null)
-  @IsString()
-  teamId?: string | null;
+  @IsArray()
+  @IsString({ each: true })
+  teamIds?: string[];
 
   @IsOptional()
   @ValidateIf((o) => o.sprintId !== null)

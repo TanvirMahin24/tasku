@@ -11,18 +11,17 @@ import { projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 
 const COLORS = {
-  committed: '#c7d2fe',
-  completed: '#6366f1',
-  ideal: '#94a3b8',
-  remaining: '#6366f1',
-  todo: '#cbd5e1',
-  inProgress: '#60a5fa',
-  done: '#34d399',
-  created: '#f59e0b',
-  resolved: '#22c55e',
+  committed: '#CCE0FF',
+  completed: '#0C66E4',
+  ideal: '#8590A2',
+  remaining: '#0C66E4',
+  todo: '#C1C7D0',
+  inProgress: '#4C9AFF',
+  done: '#22A06B',
+  created: '#E9730C',
+  resolved: '#22A06B',
 };
 
 const W = 520;
@@ -42,40 +41,46 @@ export default function ReportsPage() {
   });
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Reports" />
-        <PageSpinner label="Loading reports…" />
-      </>
-    );
+    return <PageSpinner label="Loading reports…" />;
   }
 
   if (!reports) {
     return (
-      <>
-        <PageHeader title="Reports" />
-        <div className="p-6 text-sm text-ink-muted dark:text-gray-400">No report data available.</div>
-      </>
+      <div className="p-6 text-sm text-ink-muted dark:text-gray-400">No report data available.</div>
     );
   }
 
   return (
     <>
-      <PageHeader title="Reports" subtitle="Project dashboards & charts" />
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-2">
-          <Card title="Velocity" subtitle="Committed vs completed points per sprint">
-            <VelocityChart data={reports.velocity} />
-          </Card>
-          <Card title="Burndown" subtitle="Remaining work vs ideal">
-            <BurndownChart data={reports.burndown} />
-          </Card>
-          <Card title="Cumulative flow" subtitle="Issues by status over time">
-            <CumulativeFlowChart data={reports.cumulativeFlow} />
-          </Card>
-          <Card title="Created vs Resolved" subtitle="Daily issue throughput">
-            <CreatedResolvedChart data={reports.createdVsResolved} />
-          </Card>
+        <div className="mx-auto max-w-6xl space-y-6">
+          <SprintStats burndown={reports.burndown} />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <Card
+              title="Velocity"
+              subtitle="Committed vs completed story points per sprint. Bars of similar height mean the team reliably delivers what it plans."
+            >
+              <VelocityChart data={reports.velocity} />
+            </Card>
+            <Card
+              title="Burndown"
+              subtitle="Points left in the sprint, day by day. The blue line should track the gray ‘ideal’ down to zero — staying above it means work is behind."
+            >
+              <BurndownChart data={reports.burndown} />
+            </Card>
+            <Card
+              title="Cumulative flow"
+              subtitle="Issue count by status over time. A band that keeps widening is work piling up in that status — a bottleneck."
+            >
+              <CumulativeFlowChart data={reports.cumulativeFlow} />
+            </Card>
+            <Card
+              title="Created vs resolved"
+              subtitle="Issues opened vs closed each day. Resolved staying above created means the backlog is shrinking."
+            >
+              <CreatedResolvedChart data={reports.createdVsResolved} />
+            </Card>
+          </div>
         </div>
       </div>
     </>
@@ -106,6 +111,40 @@ function Empty() {
   return (
     <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line dark:border-gray-700 text-sm text-ink-faint">
       No data yet.
+    </div>
+  );
+}
+
+/** Headline sprint numbers, derived from the burndown. */
+function SprintStats({ burndown }: { burndown: BurndownDto }) {
+  const total = burndown.totalPoints;
+  const last = burndown.points[burndown.points.length - 1];
+  const remaining = last?.remaining ?? total;
+  const completed = Math.max(0, total - remaining);
+  const cards: { label: string; value: string; color: string }[] = [
+    { label: 'Committed', value: `${total} pts`, color: '#172B4D' },
+    { label: 'Completed', value: `${completed} pts`, color: '#22A06B' },
+    { label: 'Remaining', value: `${remaining} pts`, color: '#E9730C' },
+    { label: 'Sprint', value: burndown.sprint?.name ?? '—', color: '#172B4D' },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className="rounded-[10px] border border-line bg-white p-3.5 dark:border-gray-700 dark:bg-gray-900"
+        >
+          <div className="text-[11px] font-medium text-ink-muted dark:text-gray-400">
+            {c.label}
+          </div>
+          <div
+            className="mt-1 truncate text-[22px] font-bold"
+            style={{ color: c.color }}
+          >
+            {c.value}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

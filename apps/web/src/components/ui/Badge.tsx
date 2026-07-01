@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
+import { Check } from 'lucide-react';
 import type { LabelDto } from '@tasku/types';
 import { contrastText } from '@/lib/format';
 
@@ -36,12 +37,19 @@ export function Badge({ children, className, color }: BadgeProps) {
   );
 }
 
-export function LabelBadge({ label }: { label: LabelDto }) {
+export function LabelBadge({
+  label,
+  checked,
+}: {
+  label: LabelDto;
+  checked?: boolean;
+}) {
   return (
     <span
-      className="inline-flex items-center rounded-[3px] px-[7px] py-0.5 text-[10px] font-semibold leading-none"
+      className="inline-flex items-center gap-1 rounded-[3px] px-[7px] py-0.5 text-[10px] font-semibold leading-none"
       style={{ backgroundColor: label.color, color: contrastText(label.color) }}
     >
+      {checked && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
       {label.name}
     </span>
   );
