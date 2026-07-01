@@ -153,7 +153,7 @@ export function toIssueSummaryDto(i: any): IssueSummaryDto {
     sprintId: i.sprintId ?? null,
     parentId: i.parentId ?? null,
     labels: resolveLabels(i),
-    team: toTeamSummaryDtoOrNull(i.team),
+    teams: (i.teams ?? []).map(toTeamSummaryDto),
     startDate: i.startDate ? iso(i.startDate) : null,
     dueDate: i.dueDate ? iso(i.dueDate) : null,
   };

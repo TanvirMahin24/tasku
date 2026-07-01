@@ -67,6 +67,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { AssigneeSelect } from '@/components/ui/AssigneeSelect';
 import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
+import { TeamMultiSelect } from '@/components/ui/TeamMultiSelect';
 import { IssueTypeIcon } from '@/components/ui/icons';
 import { KnowledgeBase } from '@/components/KnowledgeBase';
 import { MentionInput } from '@/components/mentions/MentionInput';
@@ -466,14 +467,11 @@ function DrawerBody({
                   onChange={(ids) => patch({ labelIds: ids })}
                 />
               </Row>
-              <Row label="Team">
-                <Select
-                  value={issue.team?.id ?? ''}
-                  onChange={(e) =>
-                    patch({ teamId: e.target.value ? e.target.value : null })
-                  }
-                  placeholder="No team"
-                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
+              <Row label="Teams" align="start">
+                <TeamMultiSelect
+                  teams={teams}
+                  value={issue.teams.map((t) => t.id)}
+                  onChange={(ids) => patch({ teamIds: ids })}
                 />
               </Row>
               <Row label="Fix versions" align="start">

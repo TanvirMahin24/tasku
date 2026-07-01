@@ -260,7 +260,7 @@ function GanttRow({
   const start = dateOf(issue.startDate);
   const due = dateOf(issue.dueDate);
   const meta = ISSUE_TYPE_META[issue.type];
-  const color = issue.team?.color ?? meta.color;
+  const color = issue.teams[0]?.color ?? meta.color;
 
   let left = 0;
   let width = 0;
@@ -355,7 +355,9 @@ function Unscheduled({
               <span className="min-w-0 flex-1 truncate text-sm text-ink-soft dark:text-gray-200">
                 {issue.title}
               </span>
-              {issue.team && <TeamChip team={issue.team} />}
+              {issue.teams.map((t) => (
+                <TeamChip key={t.id} team={t} />
+              ))}
             </button>
           </li>
         ))}

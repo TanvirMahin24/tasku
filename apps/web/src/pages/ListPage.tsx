@@ -330,7 +330,9 @@ function BulkBar({
         <Select
           value=""
           onChange={(e) =>
-            onApply({ teamId: e.target.value === '__none__' ? null : e.target.value })
+            onApply({
+              teamIds: e.target.value === '__none__' ? [] : [e.target.value],
+            })
           }
           placeholder="Set team…"
           className="h-9 w-auto"
@@ -463,7 +465,17 @@ function IssueRow({
           </span>
         </div>
       </Td>
-      <Td>{issue.team ? <TeamChip team={issue.team} /> : <span className="text-gray-300">—</span>}</Td>
+      <Td>
+        {issue.teams.length ? (
+          <span className="flex flex-wrap gap-1">
+            {issue.teams.map((t) => (
+              <TeamChip key={t.id} team={t} />
+            ))}
+          </span>
+        ) : (
+          <span className="text-gray-300">—</span>
+        )}
+      </Td>
       <Td>
         <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
           <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />

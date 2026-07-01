@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Select, inputClass } from '@/components/ui/Select';
 import { AssigneeSelect } from '@/components/ui/AssigneeSelect';
 import { LabelPicker } from '@/components/ui/LabelPicker';
+import { TeamMultiSelect } from '@/components/ui/TeamMultiSelect';
 import { IssueTypeIcon } from '@/components/ui/icons';
 
 export function CreateIssueModal({
@@ -42,7 +43,7 @@ export function CreateIssueModal({
   const [sprintId, setSprintId] = useState<string>(defaultSprintId ?? 'backlog');
   const [storyPoints, setStoryPoints] = useState<string>('');
   const [labelIds, setLabelIds] = useState<string[]>([]);
-  const [teamId, setTeamId] = useState<string>('');
+  const [teamIds, setTeamIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,7 @@ export function CreateIssueModal({
     setSprintId(defaultSprintId ?? 'backlog');
     setStoryPoints('');
     setLabelIds([]);
-    setTeamId('');
+    setTeamIds([]);
     setDueDate('');
     setError(null);
   }
@@ -89,7 +90,7 @@ export function CreateIssueModal({
       sprintId: sprintId === 'backlog' ? undefined : sprintId,
       storyPoints: Number.isFinite(points) ? points : undefined,
       labelIds: labelIds.length ? labelIds : undefined,
-      teamId: teamId || undefined,
+      teamIds: teamIds.length ? teamIds : undefined,
       dueDate: dueDate || undefined,
     });
   }
@@ -212,12 +213,11 @@ export function CreateIssueModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormRow label="Team">
-            <Select
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-              placeholder="No team"
-              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+          <FormRow label="Teams">
+            <TeamMultiSelect
+              teams={teams}
+              value={teamIds}
+              onChange={setTeamIds}
             />
           </FormRow>
           <FormRow label="Due date">

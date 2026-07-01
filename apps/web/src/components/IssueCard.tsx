@@ -29,9 +29,11 @@ export function IssueCardContent({
         {issue.title}
       </p>
 
-      {(issue.labels.length > 0 || issue.team) && (
+      {(issue.labels.length > 0 || issue.teams.length > 0) && (
         <div className="flex flex-wrap items-center gap-1">
-          {issue.team && <TeamChip team={issue.team} />}
+          {issue.teams.map((t) => (
+            <TeamChip key={t.id} team={t} />
+          ))}
           {issue.labels.map((l) => (
             <LabelBadge key={l.id} label={l} />
           ))}

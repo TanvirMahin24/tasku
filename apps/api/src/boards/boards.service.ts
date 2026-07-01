@@ -23,7 +23,7 @@ import { UpdateBoardDto } from './dto/update-board.dto';
 
 const SUMMARY_INCLUDE = {
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
 } satisfies Prisma.IssueInclude;
 
@@ -239,7 +239,7 @@ export class BoardsService {
     // Board filter (assignees / labels / types / priorities) + teamId.
     const filter = (board.filter as BoardFilter | null) ?? null;
     if (board.teamId) {
-      where.teamId = board.teamId;
+      where.teams = { some: { id: board.teamId } };
     }
     if (filter) {
       if (filter.assigneeIds?.length) {

@@ -98,7 +98,8 @@ function laneKeyFor(issue: IssueSummaryDto, by: BoardSwimlane): string {
     case 'ASSIGNEE':
       return issue.assignee?.id ?? '__none__';
     case 'TEAM':
-      return issue.team?.id ?? '__none__';
+      // Group by the issue's first team (an issue can now have several).
+      return issue.teams[0]?.id ?? '__none__';
     case 'PRIORITY':
       return issue.priority;
     case 'EPIC':
@@ -132,7 +133,7 @@ function buildLanes(board: BoardDto, by: BoardSwimlane): Lane[] {
       if (by === 'ASSIGNEE') {
         titles.set(k, issue.assignee?.displayName ?? 'Unassigned');
       } else if (by === 'TEAM') {
-        titles.set(k, issue.team?.name ?? 'No team');
+        titles.set(k, issue.teams[0]?.name ?? 'No team');
       } else if (by === 'EPIC') {
         titles.set(k, issue.parentId ? `Epic ${issue.parentId.slice(0, 6)}` : 'No epic');
       }

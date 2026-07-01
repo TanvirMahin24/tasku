@@ -15,7 +15,7 @@ import { SaveFilterDto, UpdateSavedFilterDto } from './dto/save-filter.dto';
 
 const SUMMARY_INCLUDE = {
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
 } satisfies Prisma.IssueInclude;
 
@@ -90,7 +90,7 @@ export class SearchService {
     if (priorities?.length) where.priority = { in: priorities };
 
     const teamIds = asArray(criteria.teamIds);
-    if (teamIds?.length) where.teamId = { in: teamIds };
+    if (teamIds?.length) where.teams = { some: { id: { in: teamIds } } };
 
     const labelIds = asArray(criteria.labelIds);
     if (labelIds?.length) {

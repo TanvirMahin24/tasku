@@ -6,7 +6,7 @@ import { toIssueSummaryDto, toProjectDto } from '../common/mappers';
 
 const SUMMARY_INCLUDE = {
   assignee: true,
-  team: true,
+  teams: true,
   labels: { include: { label: true } },
 } satisfies Prisma.IssueInclude;
 

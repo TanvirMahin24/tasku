@@ -122,7 +122,7 @@ export interface IssueSummaryDto {
   sprintId: string | null;
   parentId: string | null;
   labels: LabelDto[];
-  team: TeamSummaryDto | null;
+  teams: TeamSummaryDto[];
   startDate: string | null;
   dueDate: string | null;
 }
@@ -480,7 +480,7 @@ export interface CreateIssueDto {
   storyPoints?: number;
   statusId?: string;
   labelIds?: string[];
-  teamId?: string;
+  teamIds?: string[];
   startDate?: string;
   dueDate?: string;
 }
@@ -496,7 +496,7 @@ export interface UpdateIssueDto {
   sprintId?: string | null;
   storyPoints?: number | null;
   labelIds?: string[];
-  teamId?: string | null;
+  teamIds?: string[];
   startDate?: string | null;
   dueDate?: string | null;
   originalEstimate?: number | null;
@@ -645,7 +645,7 @@ export interface BulkUpdateDto {
     statusId?: string;
     assigneeId?: string | null;
     priority?: Priority;
-    teamId?: string | null;
+    teamIds?: string[];
     sprintId?: string | null;
     addLabelIds?: string[];
     removeLabelIds?: string[];

@@ -139,7 +139,6 @@ model Issue {
   assigneeId  String?
   parentId    String?   // epic link / subtask parent
   sprintId    String?
-  teamId      String?
   storyPoints Int?
   originalEstimate Int? // minutes; logged time = sum of worklogs
   startDate   DateTime? // timeline / roadmap
@@ -152,7 +151,7 @@ model Issue {
   status      Status        @relation(fields: [statusId], references: [id])
   reporter    User          @relation("Reporter", fields: [reporterId], references: [id])
   assignee    User?         @relation("Assignee", fields: [assigneeId], references: [id])
-  team        Team?         @relation(fields: [teamId], references: [id])
+  teams       Team[]        @relation("IssueTeams")
   parent      Issue?        @relation("IssueHierarchy", fields: [parentId], references: [id])
   children    Issue[]       @relation("IssueHierarchy")
   sprint      Sprint?       @relation(fields: [sprintId], references: [id])
@@ -172,7 +171,6 @@ model Issue {
   @@index([projectId])
   @@index([statusId])
   @@index([sprintId])
-  @@index([teamId])
   @@index([parentId])
 }
 
@@ -355,7 +353,7 @@ model Team {
   createdAt   DateTime @default(now())
 
   members TeamMember[]
-  issues  Issue[]
+  issues  Issue[]        @relation("IssueTeams")
   boards  Board[]
   knowledgeDocs KnowledgeDoc[]
 }

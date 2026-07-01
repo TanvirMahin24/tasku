@@ -209,7 +209,8 @@ export default function CalendarPage() {
                 <div className="pointer-events-none absolute inset-x-0 top-7 h-[68px]">
                   {segments.map((seg, i) => {
                     const color =
-                      seg.issue.team?.color ?? ISSUE_TYPE_META[seg.issue.type].color;
+                      seg.issue.teams[0]?.color ??
+                      ISSUE_TYPE_META[seg.issue.type].color;
                     return (
                       <button
                         key={i}
