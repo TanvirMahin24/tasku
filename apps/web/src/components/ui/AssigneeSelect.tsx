@@ -29,7 +29,6 @@ export function AssigneeSelect({
   const { triggerRef, popoverRef, coords } = useAnchoredPopover<HTMLButtonElement>(
     open,
     () => setOpen(false),
-    'top',
   );
   const selected = users.find((u) => u.id === value) ?? null;
 

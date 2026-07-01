@@ -658,10 +658,10 @@ function QuickFilterBar({
                 onClick={() => toggleAssignee(u.id)}
                 title={u.displayName}
                 className={clsx(
-                  'rounded-full ring-2 transition-all',
+                  'rounded-full transition-all',
                   on
-                    ? 'ring-brand-500'
-                    : 'opacity-60 ring-transparent hover:opacity-100',
+                    ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+                    : 'opacity-60 hover:opacity-100',
                 )}
               >
                 <Avatar user={u} size="sm" />
@@ -682,7 +682,9 @@ function QuickFilterBar({
                 onClick={() => toggleLabel(l.id)}
                 className={clsx(
                   'rounded transition-opacity',
-                  on ? 'ring-2 ring-brand-500' : 'opacity-60 hover:opacity-100',
+                  on
+                    ? 'ring-2 ring-brand-600 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+                    : 'opacity-60 hover:opacity-100',
                 )}
               >
                 <LabelBadge label={l} />

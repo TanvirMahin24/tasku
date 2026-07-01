@@ -17,7 +17,7 @@ export interface PopoverCoords {
 export function useAnchoredPopover<T extends HTMLElement>(
   open: boolean,
   onClose: () => void,
-  placement: 'top' | 'bottom' = 'bottom',
+  placement: 'top' | 'bottom' | 'auto' = 'auto',
 ) {
   const triggerRef = useRef<T>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -36,19 +36,25 @@ export function useAnchoredPopover<T extends HTMLElement>(
       if (!r) return;
       const GAP = 4;
       const MARGIN = 12;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      // Prefer below (default); flip up only when cramped and there's more room.
+      const placeTop =
+        placement === 'top' ||
+        (placement === 'auto' && spaceBelow < 280 && spaceAbove > spaceBelow);
       setCoords(
-        placement === 'top'
+        placeTop
           ? {
               left: r.left,
               width: r.width,
               bottom: window.innerHeight - r.top + GAP,
-              maxHeight: r.top - GAP - MARGIN,
+              maxHeight: spaceAbove - GAP - MARGIN,
             }
           : {
               left: r.left,
               width: r.width,
               top: r.bottom + GAP,
-              maxHeight: window.innerHeight - r.bottom - GAP - MARGIN,
+              maxHeight: spaceBelow - GAP - MARGIN,
             },
       );
     };

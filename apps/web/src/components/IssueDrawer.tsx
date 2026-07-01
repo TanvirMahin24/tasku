@@ -1029,21 +1029,22 @@ function LinksPanel({
       {adding ? (
         <div className="space-y-2 rounded-lg border border-line bg-surface-sunken p-3 dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
-            <Select
-              value={linkType}
-              onChange={(e) => setLinkType(e.target.value as LinkType)}
-              className="w-auto"
-              options={LINK_TYPES.map((t) => ({
-                value: t,
-                label: LINK_TYPE_LABEL[t],
-              }))}
-            />
+            <div className="w-36 shrink-0">
+              <Select
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value as LinkType)}
+                options={LINK_TYPES.map((t) => ({
+                  value: t,
+                  label: LINK_TYPE_LABEL[t],
+                }))}
+              />
+            </div>
             <input
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder="Search issue…"
               autoFocus
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} min-w-0 flex-1`}
             />
           </div>
 

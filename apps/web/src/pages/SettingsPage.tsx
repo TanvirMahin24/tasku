@@ -405,20 +405,22 @@ function StatusRow({
           if (next && next !== status.name) update.mutate({ name: next });
           else if (!next) e.target.value = status.name;
         }}
-        className={`${inputClass} h-9 flex-1`}
+        className={`${inputClass} h-9 min-w-0 flex-1`}
         aria-label="Column name"
       />
 
-      <Select
-        value={status.category}
-        onChange={(e) => {
-          onError(null);
-          update.mutate({ category: e.target.value as StatusCategory });
-        }}
-        options={CATEGORY_OPTIONS}
-        className="h-9 w-36"
-        aria-label="Category"
-      />
+      <div className="w-36 shrink-0">
+        <Select
+          value={status.category}
+          onChange={(e) => {
+            onError(null);
+            update.mutate({ category: e.target.value as StatusCategory });
+          }}
+          options={CATEGORY_OPTIONS}
+          className="h-9"
+          aria-label="Category"
+        />
+      </div>
 
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-ink-faint">WIP</span>
@@ -503,14 +505,16 @@ function AddStatusForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="New column name…"
-        className={`${inputClass} h-9 flex-1`}
+        className={`${inputClass} h-9 min-w-0 flex-1`}
       />
-      <Select
-        value={category}
-        onChange={(e) => setCategory(e.target.value as StatusCategory)}
-        options={CATEGORY_OPTIONS}
-        className="h-9 w-36"
-      />
+      <div className="w-36 shrink-0">
+        <Select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as StatusCategory)}
+          options={CATEGORY_OPTIONS}
+          className="h-9"
+        />
+      </div>
       <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
         <Plus className="h-4 w-4" /> Add
       </Button>
