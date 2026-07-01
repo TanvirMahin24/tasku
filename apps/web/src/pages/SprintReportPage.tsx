@@ -61,9 +61,9 @@ export default function SprintReportPage() {
         title="Sprint report"
         subtitle={
           <span className="flex items-center gap-2">
-            <span className="font-medium text-gray-700 dark:text-gray-200">{activeSprint.name}</span>
+            <span className="font-medium text-ink-soft dark:text-gray-200">{activeSprint.name}</span>
             {activeSprint.goal && (
-              <span className="text-gray-400">· {activeSprint.goal}</span>
+              <span className="text-ink-faint">· {activeSprint.goal}</span>
             )}
           </span>
         }
@@ -132,18 +132,18 @@ function Report({
       </div>
 
       {/* Completion progress */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+      <div className="rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-card">
         <div className="mb-2 flex items-baseline justify-between">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Completion</h3>
+          <h3 className="text-sm font-semibold text-ink dark:text-gray-100">Completion</h3>
           <span className="text-2xl font-bold text-brand-600">{pct}%</span>
         </div>
-        <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        <div className="h-3 w-full overflow-hidden rounded-full bg-surface-sunken dark:bg-gray-800">
           <div
             className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all"
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-3 flex flex-wrap gap-4 text-xs text-ink-muted dark:text-gray-400">
           <Legend color="#22c55e" label={`Done · ${donePoints} pts`} />
           <Legend color="#3b82f6" label={`In progress · ${inProgressPoints} pts`} />
           <Legend color="#cbd5e1" label={`To do · ${todoPoints} pts`} />
@@ -151,17 +151,17 @@ function Report({
       </div>
 
       {/* Per-status bar chart */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
-        <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
+      <div className="rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-card">
+        <h3 className="mb-4 text-sm font-semibold text-ink dark:text-gray-100">
           Story points by status
         </h3>
         {byCategory.length === 0 ? (
-          <p className="text-sm text-gray-400">No statuses configured.</p>
+          <p className="text-sm text-ink-faint">No statuses configured.</p>
         ) : (
           <div className="space-y-3">
             {byCategory.map((b) => (
               <div key={b.status.id} className="flex items-center gap-3">
-                <span className="w-28 shrink-0 truncate text-xs font-medium text-gray-600 dark:text-gray-400">
+                <span className="w-28 shrink-0 truncate text-xs font-medium text-ink-muted dark:text-gray-400">
                   {b.status.name}
                 </span>
                 <div className="flex h-6 flex-1 items-center">
@@ -172,7 +172,7 @@ function Report({
                     {b.points > 0 && b.points}
                   </div>
                 </div>
-                <span className="w-16 shrink-0 text-right text-xs text-gray-400">
+                <span className="w-16 shrink-0 text-right text-xs text-ink-faint">
                   {b.count} issues
                 </span>
               </div>
@@ -196,8 +196,8 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+    <div className="rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-card">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted dark:text-gray-400">
         {icon}
         {label}
       </div>
@@ -205,7 +205,7 @@ function StatCard({
         className={
           accent
             ? 'mt-1 text-2xl font-bold text-brand-600'
-            : 'mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100'
+            : 'mt-1 text-2xl font-bold text-ink dark:text-gray-100'
         }
       >
         {value}

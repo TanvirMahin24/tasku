@@ -194,8 +194,8 @@ function SprintSection({
   const points = issues.reduce((n, i) => n + (i.storyPoints ?? 0), 0);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/50 px-3 py-2.5">
+    <section className="overflow-hidden rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 shadow-card">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line-soft dark:border-gray-700 bg-surface-sunken dark:bg-gray-800/50 px-3 py-2.5">
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -205,7 +205,7 @@ function SprintSection({
           ) : (
             <ChevronRight className="h-4 w-4 text-gray-400" />
           )}
-          <span className="truncate font-semibold text-gray-900 dark:text-gray-100">
+          <span className="truncate font-semibold text-ink dark:text-gray-100">
             {sprint.name}
           </span>
           {sprint.state === 'ACTIVE' && (
@@ -287,8 +287,8 @@ function BacklogSection({
   const points = issues.reduce((n, i) => n + (i.storyPoints ?? 0), 0);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/50 px-3 py-2.5">
+    <section className="overflow-hidden rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 shadow-card">
+      <div className="flex items-center gap-2 border-b border-line-soft dark:border-gray-700 bg-surface-sunken dark:bg-gray-800/50 px-3 py-2.5">
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex flex-1 items-center gap-2 text-left"
@@ -299,7 +299,7 @@ function BacklogSection({
             <ChevronRight className="h-4 w-4 text-gray-400" />
           )}
           <CircleDot className="h-4 w-4 text-gray-400" />
-          <span className="font-semibold text-gray-900 dark:text-gray-100">Backlog</span>
+          <span className="font-semibold text-ink dark:text-gray-100">Backlog</span>
         </button>
         <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
           {issues.length} issues · {points} pts
@@ -375,11 +375,11 @@ function IssueRows({
                   onClick={() => onOpenIssue(issue.key)}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
-                  <IssueTypeIcon type={issue.type} />
-                  <span className="shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  <IssueTypeIcon type={issue.type} boxed />
+                  <span className="shrink-0 font-mono text-xs font-semibold text-ink-faint dark:text-gray-400">
                     {issue.key}
                   </span>
-                  <span className="truncate text-sm text-gray-800 dark:text-gray-200">
+                  <span className="truncate text-sm text-ink dark:text-gray-200">
                     {issue.title}
                   </span>
                   <span className="flex shrink-0 gap-1">

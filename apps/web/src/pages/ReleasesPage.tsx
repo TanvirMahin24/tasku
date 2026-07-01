@@ -39,7 +39,7 @@ export default function ReleasesPage() {
   return (
     <>
       <PageHeader title="Releases" subtitle="Versions & delivery progress" />
-      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 p-6 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page p-6 dark:bg-gray-950">
         <div className="mx-auto max-w-3xl space-y-5">
           {error && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
@@ -78,12 +78,12 @@ function ProgressBar({ p }: { p: DeliveryProgress }) {
   const w = (n: number) => `${(n / total) * 100}%`;
   return (
     <div className="space-y-1">
-      <div className="flex h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+      <div className="flex h-2 overflow-hidden rounded-full bg-surface-sunken dark:bg-gray-800">
         <div style={{ width: w(p.done) }} className="bg-emerald-500" />
         <div style={{ width: w(p.inProgress) }} className="bg-blue-400" />
         <div style={{ width: w(p.todo) }} className="bg-gray-300 dark:bg-gray-600" />
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-ink-muted dark:text-gray-400">
         {p.total} issue{p.total === 1 ? '' : 's'} · {p.done} done ·{' '}
         {p.inProgress} in progress · {p.todo} to do
       </p>
@@ -116,11 +116,11 @@ function VersionRow({
   });
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <li className="rounded-lg border border-line bg-white p-4 shadow-card dark:border-gray-700 dark:bg-gray-900">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-gray-900 dark:text-gray-100">
+            <span className="font-semibold text-ink dark:text-gray-100">
               {version.name}
             </span>
             {version.released ? (
@@ -138,7 +138,7 @@ function VersionRow({
             )}
           </div>
           {version.description && (
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
               {version.description}
             </p>
           )}
@@ -167,7 +167,7 @@ function VersionRow({
                 remove.mutate();
               }
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
             title="Delete version"
           >
             <Trash2 className="h-4 w-4" />
@@ -211,7 +211,7 @@ function CreateVersionForm({
         onError(null);
         if (name.trim()) create.mutate();
       }}
-      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+      className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line p-2.5 dark:border-gray-700"
     >
       <input
         value={name}

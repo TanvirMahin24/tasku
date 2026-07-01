@@ -23,12 +23,12 @@ export const ISSUE_TYPE_META: Record<
   IssueType,
   { icon: LucideIcon; color: string; label: string }
 > = {
-  IDEA: { icon: Lightbulb, color: '#eab308', label: 'Idea' },
-  EPIC: { icon: Layers, color: '#8b5cf6', label: 'Epic' },
-  STORY: { icon: Bookmark, color: '#22c55e', label: 'Story' },
-  TASK: { icon: CheckSquare, color: '#3b82f6', label: 'Task' },
-  BUG: { icon: Bug, color: '#ef4444', label: 'Bug' },
-  SUBTASK: { icon: GitBranch, color: '#0ea5e9', label: 'Subtask' },
+  IDEA: { icon: Lightbulb, color: '#F1A100', label: 'Idea' },
+  EPIC: { icon: Layers, color: '#8270DB', label: 'Epic' },
+  STORY: { icon: Bookmark, color: '#22A06B', label: 'Story' },
+  TASK: { icon: CheckSquare, color: '#1868DB', label: 'Task' },
+  BUG: { icon: Bug, color: '#E2483D', label: 'Bug' },
+  SUBTASK: { icon: GitBranch, color: '#1D9BAD', label: 'Subtask' },
 };
 
 export function issueTypeIcon(type: IssueType): LucideIcon {
@@ -43,11 +43,11 @@ export const PRIORITY_META: Record<
   Priority,
   { icon: LucideIcon; color: string; label: string }
 > = {
-  HIGHEST: { icon: ChevronsUp, color: '#dc2626', label: 'Highest' },
-  HIGH: { icon: ArrowUp, color: '#ef4444', label: 'High' },
-  MEDIUM: { icon: Equal, color: '#f59e0b', label: 'Medium' },
-  LOW: { icon: ArrowDown, color: '#3b82f6', label: 'Low' },
-  LOWEST: { icon: ChevronsDown, color: '#6366f1', label: 'Lowest' },
+  HIGHEST: { icon: ChevronsUp, color: '#CA3521', label: 'Highest' },
+  HIGH: { icon: ArrowUp, color: '#E9730C', label: 'High' },
+  MEDIUM: { icon: Equal, color: '#D68B00', label: 'Medium' },
+  LOW: { icon: ArrowDown, color: '#0C66E4', label: 'Low' },
+  LOWEST: { icon: ChevronsDown, color: '#0055CC', label: 'Lowest' },
 };
 
 export function priorityIcon(priority: Priority): LucideIcon {
@@ -62,28 +62,29 @@ export const STATUS_CATEGORY_META: Record<
   StatusCategory,
   { color: string; bg: string; label: string }
 > = {
-  TODO: { color: '#475569', bg: '#e2e8f0', label: 'To Do' },
-  IN_PROGRESS: { color: '#1d4ed8', bg: '#dbeafe', label: 'In Progress' },
-  DONE: { color: '#15803d', bg: '#dcfce7', label: 'Done' },
+  TODO: { color: '#626F86', bg: '#DFE1E6', label: 'To Do' },
+  IN_PROGRESS: { color: '#0C66E4', bg: '#E9F2FF', label: 'In Progress' },
+  DONE: { color: '#216E4E', bg: '#DCFFF1', label: 'Done' },
 };
 
 // ---------------------------------------------------------------------------
 // Avatars: deterministic initials + background color
 // ---------------------------------------------------------------------------
 
+// Atlassian-style avatar palette
 const AVATAR_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#84cc16',
-  '#22c55e',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#d946ef',
-  '#ec4899',
+  '#0C66E4',
+  '#6554C0',
+  '#00857A',
+  '#943D73',
+  '#E9730C',
+  '#5E4DB2',
+  '#206A83',
+  '#8270DB',
+  '#216E4E',
+  '#974F0C',
+  '#1D9BAD',
+  '#AE2E24',
 ];
 
 export function initials(name: string): string {

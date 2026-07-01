@@ -63,17 +63,17 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-surface-page dark:bg-gray-950">
       {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col bg-gray-900 text-gray-100">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-line-soft bg-white text-ink-soft dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
         <Link
           to="/"
-          className="flex items-center gap-2 px-4 py-4 text-white hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-4 text-ink hover:opacity-90 dark:text-white"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-            <CheckCircle2 className="h-5 w-5" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-600 text-white">
+            <CheckCircle2 className="h-4 w-4" />
           </span>
-          <span className="text-lg font-bold tracking-tight">Tasku</span>
+          <span className="text-lg font-bold tracking-tight">Tori</span>
         </Link>
 
         <div className="px-3">
@@ -87,11 +87,11 @@ export function AppLayout() {
         <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium text-ink-soft transition-colors hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
           >
             <Search className="h-4 w-4" />
             <span className="flex-1 text-left">Search</span>
-            <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+            <kbd className="rounded border border-line bg-surface-sunken px-1.5 py-0.5 text-[10px] font-medium text-ink-faint dark:border-white/15 dark:bg-white/5 dark:text-gray-400">
               ⌘K
             </kbd>
           </button>
@@ -107,54 +107,66 @@ export function AppLayout() {
 
           {activeProject && (
             <>
-              <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                {activeProject.name}
-              </p>
+              <div className="flex items-center gap-2 px-2 pb-1 pt-3">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-brand-600 text-[9px] font-bold text-white">
+                  {activeProject.key.slice(0, 1)}
+                </span>
+                <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                  {activeProject.name}
+                </p>
+              </div>
               <SidebarLink
                 to={`/projects/${activeProject.key}/overview`}
                 icon={LayoutDashboard}
+                iconColor="#8270DB"
               >
                 Overview
               </SidebarLink>
-              <SidebarLink to={`/projects/${activeProject.key}/board`} icon={Columns3}>
+              <SidebarLink to={`/projects/${activeProject.key}/board`} icon={Columns3} iconColor="#1868DB">
                 Board
               </SidebarLink>
-              <SidebarLink to={`/projects/${activeProject.key}/list`} icon={Rows3}>
+              <SidebarLink to={`/projects/${activeProject.key}/list`} icon={Rows3} iconColor="#22A06B">
                 List
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/timeline`}
                 icon={GanttChartSquare}
+                iconColor="#1D9BAD"
               >
                 Timeline
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/backlog`}
                 icon={ListTodo}
+                iconColor="#E9730C"
               >
                 Backlog
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/report`}
                 icon={BarChart3}
+                iconColor="#0C66E4"
               >
                 Sprint report
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/reports`}
                 icon={BarChart3}
+                iconColor="#6554C0"
               >
                 Reports
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/releases`}
                 icon={Package}
+                iconColor="#216E4E"
               >
                 Releases
               </SidebarLink>
               <SidebarLink
                 to={`/projects/${activeProject.key}/settings`}
                 icon={Settings}
+                iconColor="#5E6C84"
               >
                 Settings
               </SidebarLink>
@@ -163,23 +175,23 @@ export function AppLayout() {
         </nav>
 
         {/* Footer: notifications + theme + user */}
-        <div className="mt-auto border-t border-white/10 p-3">
+        <div className="mt-auto border-t border-line-soft p-3 dark:border-white/10">
           <div className="flex items-center gap-2">
             <NotificationsBell />
             <ThemeToggle />
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1">
               <Avatar user={user} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">
+                <p className="truncate text-sm font-medium text-ink dark:text-white">
                   {user?.displayName ?? '—'}
                 </p>
-                <p className="truncate text-xs text-gray-400">{user?.email}</p>
+                <p className="truncate text-xs text-ink-faint dark:text-gray-400">{user?.email}</p>
               </div>
             </div>
             <button
               onClick={logout}
               title="Sign out"
-              className="flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-white/10 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-surface-sunken hover:text-ink dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -212,7 +224,7 @@ function ThemeToggle() {
       onClick={cycle}
       title={`Theme: ${label} (click to change)`}
       aria-label={`Theme: ${label}`}
-      className="flex h-9 w-9 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+      className="flex h-9 w-9 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -224,11 +236,14 @@ function SidebarLink({
   icon: Icon,
   children,
   end,
+  iconColor,
 }: {
   to: string;
   icon: typeof Columns3;
   children: ReactNode;
   end?: boolean;
+  /** When set, render the icon in a small colored rounded-square (project items). */
+  iconColor?: string;
 }) {
   return (
     <NavLink
@@ -236,14 +251,23 @@ function SidebarLink({
       end={end}
       className={({ isActive }) =>
         clsx(
-          'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors',
+          'flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] transition-colors',
           isActive
-            ? 'bg-brand-600/90 text-white'
-            : 'text-gray-300 hover:bg-white/10 hover:text-white',
+            ? 'bg-brand-50 font-semibold text-brand-600 dark:bg-brand-600/25 dark:text-brand-200'
+            : 'font-medium text-ink-soft hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white',
         )
       }
     >
-      <Icon className="h-4 w-4" />
+      {iconColor ? (
+        <span
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px]"
+          style={{ backgroundColor: iconColor }}
+        >
+          <Icon className="h-2.5 w-2.5 text-white" />
+        </span>
+      ) : (
+        <Icon className="h-4 w-4" />
+      )}
       {children}
     </NavLink>
   );
@@ -275,15 +299,15 @@ function ProjectSwitcher({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-md bg-white/5 px-2.5 py-2 text-left text-sm hover:bg-white/10"
+        className="flex w-full items-center gap-2 rounded-md border border-line bg-white px-2.5 py-2 text-left text-sm hover:bg-surface-sunken dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
       >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-brand-600 text-[11px] font-bold text-white">
           {active ? active.key.slice(0, 2) : '—'}
         </span>
-        <span className="min-w-0 flex-1 truncate font-medium text-white">
+        <span className="min-w-0 flex-1 truncate font-medium text-ink dark:text-white">
           {active ? active.name : 'Select project'}
         </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-gray-400" />
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-ink-faint" />
       </button>
 
       {open && (

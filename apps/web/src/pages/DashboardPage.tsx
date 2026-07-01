@@ -30,7 +30,7 @@ export default function DashboardPage() {
     return (
       <>
         <PageHeader title="Dashboard" />
-        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">
+        <div className="p-6 text-sm text-ink-muted dark:text-gray-400">
           Nothing to show yet.
         </div>
       </>
@@ -45,7 +45,7 @@ export default function DashboardPage() {
         title={firstName ? `For you, ${firstName}` : 'For you'}
         subtitle="Your work across every space"
       />
-      <div className="flex-1 overflow-y-auto scrollbar-thin bg-gray-50 p-6 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page p-6 dark:bg-gray-950">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
           <Section title="Assigned to me" count={data.assignedToMe.length}>
             <IssueList
@@ -71,13 +71,13 @@ export default function DashboardPage() {
                         ? `/projects/${b.projectKey}/board`
                         : `/projects/${b.projectKey}/boards/${b.id}`
                     }
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-sunken dark:hover:bg-gray-800"
                   >
                     <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
-                    <span className="font-medium text-gray-800 dark:text-gray-100">
+                    <span className="font-medium text-ink dark:text-gray-100">
                       {b.name}
                     </span>
-                    <span className="truncate text-xs text-gray-400">
+                    <span className="truncate text-xs text-ink-faint">
                       {b.projectName}
                     </span>
                   </Link>
@@ -95,15 +95,15 @@ export default function DashboardPage() {
                   <Link
                     key={p.id}
                     to={`/projects/${p.key}/board`}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-sunken dark:hover:bg-gray-800"
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-brand-600 text-[11px] font-bold text-white">
                       {p.key.slice(0, 2)}
                     </span>
-                    <span className="font-medium text-gray-800 dark:text-gray-100">
+                    <span className="font-medium text-ink dark:text-gray-100">
                       {p.name}
                     </span>
-                    <span className="text-xs text-gray-400">{p.key}</span>
+                    <span className="text-xs text-ink-faint">{p.key}</span>
                   </Link>
                 ))}
               </ul>
@@ -125,10 +125,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+    <div className="rounded-lg border border-line bg-white p-4 shadow-card dark:border-gray-700 dark:bg-gray-900">
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink dark:text-gray-100">
         {title}
-        <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+        <span className="rounded-full bg-surface-sunken px-1.5 text-[11px] font-medium text-ink-muted dark:bg-gray-700 dark:text-gray-300">
           {count}
         </span>
       </h2>
@@ -151,13 +151,13 @@ function IssueList({
         <li key={i.id}>
           <Link
             to={`/issues/${i.key}`}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-sunken dark:hover:bg-gray-800"
           >
             <IssueTypeIcon type={i.type} />
-            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+            <span className="font-mono text-xs text-ink-muted dark:text-gray-400">
               {i.key}
             </span>
-            <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">
+            <span className="min-w-0 flex-1 truncate text-ink-soft dark:text-gray-200">
               {i.title}
             </span>
             <PriorityIcon priority={i.priority} className="h-3.5 w-3.5" />
@@ -170,5 +170,5 @@ function IssueList({
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="px-2 py-1.5 text-sm text-gray-400">{text}</p>;
+  return <p className="px-2 py-1.5 text-sm text-ink-faint">{text}</p>;
 }

@@ -106,7 +106,7 @@ export function CreateBoardModal({
       <form id="create-board-form" onSubmit={onSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">
+            <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
               Name <span className="text-red-500">*</span>
             </span>
             <input
@@ -118,7 +118,7 @@ export function CreateBoardModal({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700">
+            <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
               Type
             </span>
             <Select
@@ -133,7 +133,7 @@ export function CreateBoardModal({
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Team filter
           </span>
           <Select
@@ -145,7 +145,7 @@ export function CreateBoardModal({
         </label>
 
         <div>
-          <span className="mb-1.5 block text-sm font-medium text-gray-700">
+          <span className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Issue types
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -166,7 +166,7 @@ export function CreateBoardModal({
         </div>
 
         <div>
-          <span className="mb-1.5 block text-sm font-medium text-gray-700">
+          <span className="mb-1.5 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Priorities
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -187,7 +187,7 @@ export function CreateBoardModal({
         </div>
 
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </p>
         )}

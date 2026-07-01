@@ -439,7 +439,7 @@ function BoardView({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto bg-gray-50 p-4 scrollbar-thin dark:bg-gray-950">
+      <div className="flex-1 overflow-auto bg-surface-page p-4 scrollbar-thin dark:bg-gray-950">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -584,11 +584,11 @@ function SwimlaneControl({
             ? 'Swimlanes are available on custom boards'
             : 'Group into swimlanes'
         }
-        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-surface-page disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
       >
-        <Rows3 className="h-4 w-4 text-gray-400" />
+        <Rows3 className="h-4 w-4 text-ink-faint" />
         {SWIMLANE_LABEL[value]}
-        <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
+        <ChevronsUpDown className="h-3.5 w-3.5 text-ink-faint" />
       </button>
 
       {open && (
@@ -646,14 +646,14 @@ function QuickFilterBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-6 py-2 dark:border-gray-700 dark:bg-gray-900">
+    <div className="flex flex-wrap items-center gap-2 border-b border-line-soft bg-white px-6 py-2 dark:border-gray-700 dark:bg-gray-900">
       <button
         onClick={() => onChange({ ...filter, myIssues: !filter.myIssues })}
         className={clsx(
           'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
           filter.myIssues
-            ? 'border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/15 dark:text-brand-300'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+            ? 'border-brand-600 bg-brand-50 font-semibold text-brand-600 dark:border-brand-500 dark:bg-brand-500/15 dark:text-brand-300'
+            : 'border-line bg-white text-ink-soft hover:bg-surface-page dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
         )}
       >
         <User className="h-3.5 w-3.5" /> My issues
@@ -762,10 +762,10 @@ function BoardSwitcher({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2 py-0.5 text-sm font-medium text-ink-soft hover:bg-surface-page dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
       >
         {currentName}
-        <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
+        <ChevronsUpDown className="h-3.5 w-3.5 text-ink-faint" />
       </button>
 
       {open && (
@@ -865,47 +865,35 @@ function BoardColumn({
   return (
     <div
       className={clsx(
-        'flex w-72 shrink-0 flex-col rounded-lg bg-gray-100/80 dark:bg-gray-900/70',
+        'flex w-72 shrink-0 flex-col rounded-[10px] bg-surface-sunken transition-colors dark:bg-gray-900/70',
         laned ? 'min-h-[7rem]' : 'h-full',
+        isOver && 'bg-brand-50 ring-2 ring-[#4C9AFF] dark:bg-brand-500/10',
       )}
     >
-      <div
-        className={clsx(
-          'flex items-center justify-between rounded-t-lg px-3 py-2.5',
-          overLimit && 'bg-red-100/70 dark:bg-red-500/15',
-        )}
-      >
+      <div className="flex items-center justify-between rounded-t-[10px] px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: meta.color }}
           />
-          <span
-            className={clsx(
-              'text-xs font-semibold uppercase tracking-wide',
-              overLimit
-                ? 'text-red-700 dark:text-red-300'
-                : 'text-gray-600 dark:text-gray-300',
-            )}
-          >
+          <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-300">
             {status.name}
           </span>
+          <span className="text-xs font-semibold text-ink-faint dark:text-gray-400">
+            {issues.length}
+          </span>
         </div>
-        {status.wipLimit != null ? (
+        {status.wipLimit != null && (
           <span
             className={clsx(
-              'rounded-full px-1.5 text-[11px] font-semibold',
+              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
               overLimit
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-300',
+                ? 'bg-[#FFECEB] text-[#C9372C]'
+                : 'bg-[#DCFFF1] text-[#22A06B]',
             )}
             title={`${fullCount} of WIP limit ${status.wipLimit}`}
           >
             {fullCount} / {status.wipLimit}
-          </span>
-        ) : (
-          <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-500 dark:bg-gray-700 dark:text-gray-300">
-            {issues.length}
           </span>
         )}
       </div>
@@ -916,10 +904,7 @@ function BoardColumn({
       >
         <div
           ref={setNodeRef}
-          className={clsx(
-            'flex-1 space-y-2 overflow-y-auto px-2 pb-2 scrollbar-thin transition-colors',
-            isOver && 'bg-brand-50/60 dark:bg-brand-500/10',
-          )}
+          className="flex-1 space-y-2 overflow-y-auto px-2 pb-2 scrollbar-thin"
         >
           {issues.map((issue) => (
             <SortableIssueCard
@@ -929,7 +914,7 @@ function BoardColumn({
             />
           ))}
           {issues.length === 0 && (
-            <div className="rounded-md border border-dashed border-gray-300 py-6 text-center text-xs text-gray-400 dark:border-gray-700">
+            <div className="rounded-md border border-dashed border-line py-6 text-center text-xs text-ink-faint dark:border-gray-700">
               Drop issues here
             </div>
           )}

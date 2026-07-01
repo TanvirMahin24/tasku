@@ -39,7 +39,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Get started with Tasku in seconds."
+      subtitle="Get started with Tori in seconds."
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <Field
@@ -77,7 +77,7 @@ export default function RegisterPage() {
           Create account
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-6 text-center text-sm text-ink-muted dark:text-gray-400">
         Already have an account?{' '}
         <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">
           Sign in

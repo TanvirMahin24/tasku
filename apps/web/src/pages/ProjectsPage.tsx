@@ -47,7 +47,7 @@ export default function ProjectsPage() {
           <YourTasks />
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400">
               Your spaces
             </h2>
             {isLoading ? (
@@ -74,7 +74,7 @@ export default function ProjectsPage() {
 
           {recommended.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400">
                 Recommended spaces
               </h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -117,7 +117,7 @@ function YourTasks() {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400">
           Your tasks
         </h2>
         <div className="flex gap-1">
@@ -128,7 +128,7 @@ function YourTasks() {
               className={
                 filter === f.value
                   ? 'rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white'
-                  : 'rounded-md px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                  : 'rounded-md px-2.5 py-1 text-xs font-medium text-ink-muted hover:bg-surface-sunken dark:text-gray-400 dark:hover:bg-gray-800'
               }
             >
               {f.label}
@@ -136,11 +136,11 @@ function YourTasks() {
           ))}
         </div>
       </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="rounded-lg border border-line bg-white p-2 shadow-card dark:border-gray-700 dark:bg-gray-900">
         {isLoading ? (
-          <p className="px-2 py-3 text-sm text-gray-400">Loading…</p>
+          <p className="px-2 py-3 text-sm text-ink-faint">Loading…</p>
         ) : issues.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-gray-400">No tasks match.</p>
+          <p className="px-2 py-3 text-sm text-ink-faint">No tasks match.</p>
         ) : (
           <ul className="space-y-0.5">
             {issues.map((i) => (
@@ -158,13 +158,13 @@ function TaskRow({ issue }: { issue: IssueSummaryDto }) {
     <li>
       <Link
         to={`/issues/${issue.key}`}
-        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-sunken dark:hover:bg-gray-800"
       >
         <IssueTypeIcon type={issue.type} />
-        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+        <span className="font-mono text-xs text-ink-muted dark:text-gray-400">
           {issue.key}
         </span>
-        <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">
+        <span className="min-w-0 flex-1 truncate text-ink-soft dark:text-gray-200">
           {issue.title}
         </span>
         <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ function TaskRow({ issue }: { issue: IssueSummaryDto }) {
 
 function RecommendedCard({ project }: { project: ProjectDto }) {
   return (
-    <div className="flex flex-col rounded-xl border border-dashed border-gray-300 bg-white/50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+    <div className="flex flex-col rounded-xl border border-dashed border-line bg-white/50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
       <div className="flex items-center gap-3">
         <span
           className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
@@ -184,18 +184,18 @@ function RecommendedCard({ project }: { project: ProjectDto }) {
           {project.key.slice(0, 2)}
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-gray-900 dark:text-gray-100">
+          <p className="truncate font-semibold text-ink dark:text-gray-100">
             {project.name}
           </p>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
             {project.key}
           </p>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-ink-muted dark:text-gray-400">
         {project.description || 'No description'}
       </p>
-      <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-gray-700">
+      <p className="mt-3 border-t border-line-soft pt-3 text-xs text-ink-faint dark:border-gray-700">
         Ask an admin to add you
       </p>
     </div>
@@ -206,7 +206,7 @@ function ProjectCard({ project }: { project: ProjectDto }) {
   return (
     <Link
       to={`/projects/${project.key}/board`}
-      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
+      className="group flex flex-col rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         <span
@@ -216,23 +216,23 @@ function ProjectCard({ project }: { project: ProjectDto }) {
           {project.key.slice(0, 2)}
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-700">
+          <p className="truncate font-semibold text-ink dark:text-gray-100 group-hover:text-brand-700">
             {project.name}
           </p>
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
             {project.key}
           </p>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-ink-muted dark:text-gray-400">
         {project.description || 'No description'}
       </p>
-      <div className="mt-3 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
-        <span className="text-xs text-gray-400">
+      <div className="mt-3 flex items-center justify-between border-t border-line-soft dark:border-gray-700 pt-3">
+        <span className="text-xs text-ink-faint">
           {project.role ? project.role.toLowerCase() : 'member'}
         </span>
         {project.lead && (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-xs text-ink-muted dark:text-gray-400">
             <Avatar user={project.lead} size="xs" />
             {project.lead.displayName}
           </span>
@@ -316,7 +316,7 @@ export function CreateProjectModal({
     >
       <form id="create-project-form" onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+          <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Key <span className="text-red-500">*</span>
           </span>
           <input
@@ -328,12 +328,12 @@ export function CreateProjectModal({
             placeholder="TASK"
             autoFocus
           />
-          <span className="mt-1 block text-xs text-gray-400 dark:text-gray-400">
+          <span className="mt-1 block text-xs text-ink-faint dark:text-gray-400">
             Used as the prefix for issues, e.g. {key || 'TASK'}-1.
           </span>
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+          <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Name <span className="text-red-500">*</span>
           </span>
           <input
@@ -344,7 +344,7 @@ export function CreateProjectModal({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+          <span className="mb-1 block text-sm font-medium text-ink-soft dark:text-gray-200">
             Description
           </span>
           <textarea

@@ -67,7 +67,7 @@ export function NotificationsBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-white/10 hover:text-white"
+        className="relative flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-surface-sunken hover:text-ink dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -79,9 +79,9 @@ export function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute left-0 bottom-11 z-40 w-80 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 dark:border-gray-700">
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <div className="absolute left-0 bottom-11 z-40 w-80 overflow-hidden rounded-xl border border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex items-center justify-between border-b border-line-soft px-4 py-2.5 dark:border-gray-700">
+            <span className="text-sm font-semibold text-ink dark:text-gray-100">
               Notifications
             </span>
             {unread > 0 && (

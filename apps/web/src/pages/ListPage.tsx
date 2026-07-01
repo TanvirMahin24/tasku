@@ -18,7 +18,6 @@ import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
   PRIORITY_META,
-  STATUS_CATEGORY_META,
   formatDate,
 } from '@/lib/format';
 import { useProjectMeta } from '@/hooks/useProjectMeta';
@@ -28,7 +27,7 @@ import { Button } from '@/components/ui/Button';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityIcon, StatusPill } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
@@ -126,7 +125,7 @@ export default function ListPage() {
       <PageHeader title="List" subtitle="All issues in this project" />
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line-soft dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -169,7 +168,7 @@ export default function ListPage() {
         />
       </div>
 
-      <div className="flex-1 overflow-auto scrollbar-thin bg-gray-50 dark:bg-gray-950 p-6">
+      <div className="flex-1 overflow-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
         {isLoading ? (
           <PageSpinner label="Loading issues…" />
         ) : !issues || issues.length === 0 ? (
@@ -179,10 +178,10 @@ export default function ListPage() {
             description="Try adjusting the filters above."
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          <div className="overflow-hidden rounded-lg border border-line dark:border-gray-700 bg-white dark:bg-gray-900 shadow-card">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <tr className="border-b border-line-soft dark:border-gray-700 bg-surface-sunken dark:bg-gray-800/50 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400">
                   <Th className="w-10">
                     <input
                       type="checkbox"
@@ -291,7 +290,7 @@ function BulkBar({
   const [removeLabelIds, setRemoveLabelIds] = useState<string[]>([]);
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
+    <div className="sticky bottom-0 z-20 border-t border-line dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-3 shadow-[0_-2px_8px_rgba(9,30,66,0.08)]">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
           {count} selected
@@ -445,23 +444,15 @@ function IssueRow({
       <Td>
         <IssueTypeIcon type={issue.type} />
       </Td>
-      <Td className="whitespace-nowrap font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
+      <Td className="whitespace-nowrap font-mono text-xs font-semibold text-ink-faint dark:text-gray-400">
         {issue.key}
       </Td>
       <Td className="max-w-md">
-        <span className="line-clamp-1 text-gray-800 dark:text-gray-200">{issue.title}</span>
+        <span className="line-clamp-1 text-ink dark:text-gray-200">{issue.title}</span>
       </Td>
       <Td>
         {status ? (
-          <span
-            className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium"
-            style={{
-              backgroundColor: STATUS_CATEGORY_META[status.category].bg,
-              color: STATUS_CATEGORY_META[status.category].color,
-            }}
-          >
-            {status.name}
-          </span>
+          <StatusPill category={status.category} label={status.name} />
         ) : (
           <span className="text-gray-400">—</span>
         )}

@@ -57,7 +57,7 @@ export function DescriptionEditor({
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(flush, 800);
       }}
-      className="min-h-[120px] rounded-md border border-gray-300 py-2 dark:border-gray-600"
+      className="min-h-[120px] rounded-md border border-line py-2 dark:border-gray-600"
     />
   );
 }

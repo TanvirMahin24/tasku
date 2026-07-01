@@ -133,7 +133,7 @@ export default function SettingsPage() {
       ) : (
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Tab rail */}
-          <nav className="w-56 shrink-0 space-y-0.5 border-r border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+          <nav className="w-56 shrink-0 space-y-0.5 border-r border-line bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
             {TABS.map((t) => {
               const Icon = t.icon;
               return (
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                     'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors',
                     tab === t.id
                       ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
+                      : 'text-ink-muted hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-gray-800',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -233,10 +233,10 @@ function WorkflowTab({ projectKey }: { projectKey: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-base font-semibold text-ink dark:text-gray-100">
           Columns &amp; workflow
         </h2>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
           Drag to reorder columns. Set a WIP limit to flag overloaded columns on
           the board.
         </p>
@@ -333,12 +333,12 @@ function StatusRow({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+      className="flex items-center gap-3 rounded-lg border border-line bg-white p-2.5 shadow-card dark:border-gray-700 dark:bg-gray-900"
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab touch-none text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600"
+        className="cursor-grab touch-none text-ink-faint hover:text-ink-muted active:cursor-grabbing dark:text-gray-600"
         title="Drag to reorder"
         aria-label="Drag to reorder"
       >
@@ -375,7 +375,7 @@ function StatusRow({
       />
 
       <div className="flex items-center gap-1.5">
-        <span className="text-xs text-gray-400">WIP</span>
+        <span className="text-xs text-ink-faint">WIP</span>
         <input
           type="number"
           min={0}
@@ -411,7 +411,7 @@ function StatusRow({
         title={
           canDelete ? 'Delete column' : 'A project needs at least one column'
         }
-        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-500/10"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-500/10"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -451,7 +451,7 @@ function AddStatusForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+      className="flex items-center gap-2 rounded-lg border border-dashed border-line p-2.5 dark:border-gray-700"
     >
       <input
         value={name}
@@ -505,10 +505,10 @@ function ComponentsTab({ projectKey }: { projectKey: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-base font-semibold text-ink dark:text-gray-100">
           Components
         </h2>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
           Group issues by component (e.g. API, Web, Infra).
         </p>
       </div>
@@ -520,7 +520,7 @@ function ComponentsTab({ projectKey }: { projectKey: string }) {
       )}
 
       {components.length === 0 ? (
-        <p className="text-sm text-gray-400">No components yet.</p>
+        <p className="text-sm text-ink-faint">No components yet.</p>
       ) : (
         <ul className="space-y-2">
           {components.map((c) => (
@@ -540,7 +540,7 @@ function ComponentsTab({ projectKey }: { projectKey: string }) {
           setError(null);
           if (name.trim()) create.mutate();
         }}
-        className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+        className="flex items-center gap-2 rounded-lg border border-dashed border-line p-2.5 dark:border-gray-700"
       >
         <input
           value={name}
@@ -584,8 +584,8 @@ function ComponentRow({
   });
 
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <ComponentIcon className="h-4 w-4 shrink-0 text-gray-400" />
+    <li className="flex items-center gap-3 rounded-lg border border-line bg-white p-2.5 shadow-card dark:border-gray-700 dark:bg-gray-900">
+      <ComponentIcon className="h-4 w-4 shrink-0 text-ink-faint" />
       <input
         defaultValue={component.name}
         key={component.name}
@@ -606,7 +606,7 @@ function ComponentRow({
           }
         }}
         disabled={remove.isPending}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10"
         title="Delete component"
       >
         <Trash2 className="h-4 w-4" />
@@ -635,10 +635,10 @@ function CustomFieldsTab({ projectKey }: { projectKey: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-base font-semibold text-ink dark:text-gray-100">
           Custom fields
         </h2>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
           Add fields that appear on every issue in this project, beside the
           built-in ones.
         </p>
@@ -651,7 +651,7 @@ function CustomFieldsTab({ projectKey }: { projectKey: string }) {
       )}
 
       {fields.length === 0 ? (
-        <p className="text-sm text-gray-400">No custom fields yet.</p>
+        <p className="text-sm text-ink-faint">No custom fields yet.</p>
       ) : (
         <ul className="space-y-2">
           {fields.map((f) => (
@@ -688,13 +688,13 @@ function FieldRow({
   });
 
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <SlidersHorizontal className="h-4 w-4 shrink-0 text-gray-400" />
+    <li className="flex items-center gap-3 rounded-lg border border-line bg-white p-2.5 shadow-card dark:border-gray-700 dark:bg-gray-900">
+      <SlidersHorizontal className="h-4 w-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+        <p className="truncate text-sm font-medium text-ink dark:text-gray-100">
           {field.name}
         </p>
-        <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+        <p className="truncate text-xs text-ink-muted dark:text-gray-400">
           {FIELD_TYPE_LABELS[field.type]}
           {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
           {field.required ? ' · required' : ''}
@@ -712,7 +712,7 @@ function FieldRow({
           }
         }}
         disabled={remove.isPending}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-500/10"
         title="Delete field"
       >
         <Trash2 className="h-4 w-4" />
@@ -765,7 +765,7 @@ function AddFieldForm({
         onError(null);
         if (name.trim() && !optionsInvalid) create.mutate();
       }}
-      className="space-y-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+      className="space-y-2 rounded-lg border border-dashed border-line p-2.5 dark:border-gray-700"
     >
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -799,7 +799,7 @@ function AddFieldForm({
           className={`${inputClass} h-9 w-full`}
         />
       )}
-      <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+      <label className="flex items-center gap-2 text-sm text-ink-muted dark:text-gray-300">
         <input
           type="checkbox"
           checked={required}
@@ -850,10 +850,10 @@ function MembersTab({ projectKey }: { projectKey: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-base font-semibold text-ink dark:text-gray-100">
           Members
         </h2>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-0.5 text-sm text-ink-muted dark:text-gray-400">
           Manage who can access this project and what they can do.
         </p>
       </div>
@@ -864,7 +864,7 @@ function MembersTab({ projectKey }: { projectKey: string }) {
         </p>
       )}
 
-      <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+      <ul className="divide-y divide-line-soft overflow-hidden rounded-lg border border-line dark:divide-gray-700 dark:border-gray-700">
         {members.map((m) => (
           <MemberRow
             key={m.user.id}
@@ -883,7 +883,7 @@ function MembersTab({ projectKey }: { projectKey: string }) {
           setError(null);
           if (email.trim()) add.mutate();
         }}
-        className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-gray-300 p-2.5 dark:border-gray-700"
+        className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line p-2.5 dark:border-gray-700"
       >
         <input
           type="email"
@@ -942,10 +942,10 @@ function MemberRow({
     <li className="flex items-center gap-3 bg-white px-3 py-2.5 dark:bg-gray-900">
       <Avatar user={member.user} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+        <p className="flex items-center gap-1.5 truncate text-sm font-medium text-ink dark:text-gray-100">
           {member.user.displayName}
           {isSelf && (
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-[10px] font-medium text-ink-muted dark:bg-gray-700 dark:text-gray-300">
               you
             </span>
           )}
@@ -953,7 +953,7 @@ function MemberRow({
             <Shield className="h-3.5 w-3.5 text-brand-500" />
           )}
         </p>
-        <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+        <p className="truncate text-xs text-ink-muted dark:text-gray-400">
           {member.user.email}
         </p>
       </div>
@@ -984,7 +984,7 @@ function MemberRow({
             ? 'A project must keep at least one admin'
             : 'Remove member'
         }
-        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-500/10"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-500/10"
       >
         <Trash2 className="h-4 w-4" />
       </button>

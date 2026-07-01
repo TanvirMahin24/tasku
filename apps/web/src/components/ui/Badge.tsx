@@ -37,5 +37,12 @@ export function Badge({ children, className, color }: BadgeProps) {
 }
 
 export function LabelBadge({ label }: { label: LabelDto }) {
-  return <Badge color={label.color}>{label.name}</Badge>;
+  return (
+    <span
+      className="inline-flex items-center rounded-[3px] px-[7px] py-0.5 text-[10px] font-semibold leading-none"
+      style={{ backgroundColor: label.color, color: contrastText(label.color) }}
+    >
+      {label.name}
+    </span>
+  );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import clsx from 'clsx';
 import {
   useMutation,
   useQuery,
@@ -52,6 +53,7 @@ import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
   PRIORITY_META,
+  STATUS_CATEGORY_META,
   humanizeField,
   relativeTime,
   toDateInput,
@@ -94,7 +96,7 @@ export function IssueDrawer({
   return createPortal(
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-gray-900/30 dark:bg-black/60" onClick={onClose} aria-hidden />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-gray-900">
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
         <DrawerBody
           issueKey={issueKey}
           projectKey={projectKey}
@@ -186,7 +188,7 @@ function DrawerBody({
     return (
       <>
         <DrawerHeader issueKey={issueKey} onClose={onClose} />
-        <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-500">
+        <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-ink-muted">
           {apiErrorMessage(error, 'Could not load this issue.')}
         </div>
       </>
@@ -202,7 +204,7 @@ function DrawerBody({
               remove.mutate();
             }
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600"
           title="Delete issue"
         >
           <Trash2 className="h-4 w-4" />
@@ -220,23 +222,23 @@ function DrawerBody({
               if (next && next !== issue.title) patch({ title: next });
               else if (!next) setTitle(issue.title);
             }}
-            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-gray-900 hover:border-gray-200 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
+            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-ink hover:border-line focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
           />
 
           {issue.parent && (
             <div className="mt-3">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 Parent
               </span>
               <Link
                 to={`/issues/${issue.parent.key}`}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm hover:border-brand-300 hover:bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+                className="inline-flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-2.5 py-1.5 text-sm hover:border-brand-300 hover:bg-white dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
               >
                 <IssueTypeIcon type={issue.parent.type} />
-                <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-mono text-xs text-ink-muted dark:text-ink-faint">
                   {issue.parent.key}
                 </span>
-                <span className="text-gray-700 dark:text-gray-200">{issue.parent.title}</span>
+                <span className="text-ink-soft dark:text-gray-200">{issue.parent.title}</span>
               </Link>
             </div>
           )}
@@ -284,7 +286,7 @@ function DrawerBody({
         </div>
 
         {/* Sidebar fields */}
-        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-gray-200 bg-gray-50 px-5 py-5 dark:border-gray-700 dark:bg-gray-950/40">
+        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-line bg-surface-sunken px-5 py-5 dark:border-gray-700 dark:bg-gray-950/40">
           {errorMsg && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
               {errorMsg}
@@ -292,10 +294,10 @@ function DrawerBody({
           )}
 
           <Field label="Status">
-            <Select
+            <StatusMenu
+              statuses={statuses}
               value={issue.statusId}
-              onChange={(e) => patch({ statusId: e.target.value })}
-              options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+              onChange={(id) => patch({ statusId: id })}
             />
           </Field>
 
@@ -413,7 +415,7 @@ function DrawerBody({
           </Field>
 
           {issue.customFields.length > 0 && (
-            <div className="space-y-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+            <div className="space-y-3 border-t border-line pt-3 dark:border-gray-700">
               {issue.customFields.map((cf) => (
                 <Field key={cf.field.id} label={cf.field.name}>
                   <CustomFieldControl
@@ -426,10 +428,10 @@ function DrawerBody({
             </div>
           )}
 
-          <div className="space-y-1.5 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          <div className="space-y-1.5 border-t border-line pt-3 text-xs text-ink-muted dark:border-gray-700 dark:text-ink-faint">
             <div className="flex items-center justify-between">
               <span>Reporter</span>
-              <span className="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-200">
+              <span className="flex items-center gap-1.5 font-medium text-ink-soft dark:text-gray-200">
                 <Avatar user={issue.reporter} size="xs" />
                 {issue.reporter.displayName}
               </span>
@@ -481,14 +483,14 @@ function CommentsPanel({
               <Avatar user={c.author} size="sm" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-medium text-ink dark:text-gray-100">
                     {c.author.displayName}
                   </span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-ink-faint">
                     {relativeTime(c.createdAt)}
                   </span>
                 </div>
-                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                <p className="mt-0.5 whitespace-pre-wrap break-words rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-soft dark:bg-gray-800 dark:text-gray-200">
                   {c.body}
                 </p>
               </div>
@@ -566,27 +568,27 @@ function SubtasksPanel({
   return (
     <div className="space-y-2">
       {items.length > 0 && (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+        <ul className="divide-y divide-line-soft overflow-hidden rounded-lg border border-line dark:divide-gray-700 dark:border-gray-700">
           {items.map((c) => {
             const done = doneStatusIds.has(c.statusId);
             return (
               <li key={c.id}>
                 <Link
                   to={`/issues/${c.key}`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-sunken"
                 >
                   <input
                     type="checkbox"
                     checked={done}
                     readOnly
-                    className="h-4 w-4 rounded border-gray-300 text-brand-600"
+                    className="h-4 w-4 rounded border-line text-brand-600"
                   />
                   <IssueTypeIcon type={c.type} />
-                  <span className="font-mono text-[11px] text-gray-400">
+                  <span className="font-mono text-[11px] text-ink-faint">
                     {c.key}
                   </span>
                   <span
-                    className={`min-w-0 flex-1 truncate ${done ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                    className={`min-w-0 flex-1 truncate ${done ? 'text-ink-faint line-through' : 'text-ink-soft'}`}
                   >
                     {c.title}
                   </span>
@@ -641,7 +643,7 @@ function SubtasksPanel({
       )}
 
       {items.length === 0 && !adding && (
-        <p className="text-sm text-gray-400">No subtasks yet.</p>
+        <p className="text-sm text-ink-faint">No subtasks yet.</p>
       )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -655,7 +657,7 @@ function SubtasksPanel({
 
 function ActivityFeed({ activities }: { activities: ActivityDto[] }) {
   if (activities.length === 0) {
-    return <p className="text-sm text-gray-400">No activity yet.</p>;
+    return <p className="text-sm text-ink-faint">No activity yet.</p>;
   }
   // Newest first.
   const sorted = [...activities].sort(
@@ -666,12 +668,12 @@ function ActivityFeed({ activities }: { activities: ActivityDto[] }) {
       {sorted.map((a) => (
         <li key={a.id} className="flex items-start gap-2.5 text-sm">
           <Avatar user={a.actor} size="xs" className="mt-0.5" />
-          <p className="text-gray-600">
-            <span className="font-medium text-gray-900">
+          <p className="text-ink-muted">
+            <span className="font-medium text-ink">
               {a.actor.displayName}
             </span>{' '}
             <ActivityText activity={a} />{' '}
-            <span className="text-gray-400">· {relativeTime(a.createdAt)}</span>
+            <span className="text-ink-faint">· {relativeTime(a.createdAt)}</span>
           </p>
         </li>
       ))}
@@ -688,8 +690,8 @@ function ActivityText({ activity }: { activity: ActivityDto }) {
     return (
       <>
         changed <span className="font-medium">{f}</span> from{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{oldValue}</code> to{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{newValue}</code>
+        <code className="rounded bg-surface-sunken px-1 text-xs">{oldValue}</code> to{' '}
+        <code className="rounded bg-surface-sunken px-1 text-xs">{newValue}</code>
       </>
     );
   }
@@ -697,7 +699,7 @@ function ActivityText({ activity }: { activity: ActivityDto }) {
     return (
       <>
         set <span className="font-medium">{f}</span> to{' '}
-        <code className="rounded bg-gray-100 px-1 text-xs">{newValue}</code>
+        <code className="rounded bg-surface-sunken px-1 text-xs">{newValue}</code>
       </>
     );
   }
@@ -792,15 +794,15 @@ function LinksPanel({
   return (
     <div className="space-y-3">
       {links.length === 0 && !adding && (
-        <p className="text-sm text-gray-400">No linked issues.</p>
+        <p className="text-sm text-ink-faint">No linked issues.</p>
       )}
 
       {[...groups.entries()].map(([label, items]) => (
         <div key={label}>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-faint">
             {label}
           </p>
-          <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+          <ul className="divide-y divide-line-soft overflow-hidden rounded-lg border border-line dark:divide-gray-700 dark:border-gray-700">
             {items.map((l) => (
               <li key={l.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                 <IssueTypeIcon type={l.issue.type} />
@@ -808,16 +810,16 @@ function LinksPanel({
                   to={`/issues/${l.issue.key}`}
                   className="flex min-w-0 flex-1 items-center gap-2 hover:underline"
                 >
-                  <span className="font-mono text-[11px] text-gray-400">
+                  <span className="font-mono text-[11px] text-ink-faint">
                     {l.issue.key}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-gray-700">
+                  <span className="min-w-0 flex-1 truncate text-ink-soft">
                     {l.issue.title}
                   </span>
                 </Link>
                 <button
                   onClick={() => remove.mutate(l.id)}
-                  className="text-gray-300 hover:text-red-600"
+                  className="text-ink-faint hover:text-red-600"
                   title="Remove link"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -829,7 +831,7 @@ function LinksPanel({
       ))}
 
       {adding ? (
-        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="space-y-2 rounded-lg border border-line bg-surface-sunken p-3 dark:border-gray-700 dark:bg-gray-800/50">
           <div className="flex items-center gap-2">
             <Select
               value={linkType}
@@ -850,7 +852,7 @@ function LinksPanel({
           </div>
 
           {suggestions && suggestions.issues.length > 0 && (
-            <ul className="max-h-40 overflow-y-auto scrollbar-thin rounded-md border border-gray-200 bg-white">
+            <ul className="max-h-40 overflow-y-auto scrollbar-thin rounded-md border border-line bg-white">
               {suggestions.issues
                 .filter((i) => i.key !== issueKey)
                 .map((i) => (
@@ -860,13 +862,13 @@ function LinksPanel({
                         setError(null);
                         add.mutate({ type: linkType, targetKey: i.key });
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-surface-sunken"
                     >
                       <IssueTypeIcon type={i.type} />
-                      <span className="font-mono text-[11px] text-gray-400">
+                      <span className="font-mono text-[11px] text-ink-faint">
                         {i.key}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-gray-700">
+                      <span className="min-w-0 flex-1 truncate text-ink-soft">
                         {i.title}
                       </span>
                     </button>
@@ -986,7 +988,7 @@ function AttachmentsPanel({
         className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-5 text-center text-sm ${
           dragOver
             ? 'border-brand-400 bg-brand-50 text-brand-600'
-            : 'border-gray-300 text-gray-400'
+            : 'border-line text-ink-faint'
         }`}
       >
         <Paperclip className="mb-1 h-5 w-5" />
@@ -1009,7 +1011,7 @@ function AttachmentsPanel({
       </div>
 
       {upload.isPending && (
-        <p className="flex items-center gap-1.5 text-xs text-gray-400">
+        <p className="flex items-center gap-1.5 text-xs text-ink-faint">
           <Spinner className="h-3.5 w-3.5" /> Uploading…
         </p>
       )}
@@ -1061,13 +1063,13 @@ function AttachmentCard({
   }
 
   return (
-    <li className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <li className="group relative overflow-hidden rounded-lg border border-line bg-white">
       <button
         onClick={download}
         className="block w-full text-left"
         title={`Download ${attachment.filename}`}
       >
-        <div className="flex h-24 items-center justify-center bg-gray-50">
+        <div className="flex h-24 items-center justify-center bg-surface-sunken">
           {isImage && blobUrl ? (
             <img
               src={blobUrl}
@@ -1075,22 +1077,22 @@ function AttachmentCard({
               className="h-full w-full object-cover"
             />
           ) : (
-            <FileText className="h-8 w-8 text-gray-300" />
+            <FileText className="h-8 w-8 text-ink-faint" />
           )}
         </div>
         <div className="flex items-center gap-1.5 px-2 py-1.5">
-          <Download className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          <span className="min-w-0 flex-1 truncate text-xs text-gray-700">
+          <Download className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
+          <span className="min-w-0 flex-1 truncate text-xs text-ink-soft">
             {attachment.filename}
           </span>
-          <span className="shrink-0 text-[10px] text-gray-400">
+          <span className="shrink-0 text-[10px] text-ink-faint">
             {formatBytes(attachment.size)}
           </span>
         </div>
       </button>
       <button
         onClick={onDelete}
-        className="absolute right-1 top-1 hidden h-6 w-6 items-center justify-center rounded bg-white/90 text-gray-500 shadow-sm hover:text-red-600 group-hover:flex"
+        className="absolute right-1 top-1 hidden h-6 w-6 items-center justify-center rounded bg-white/90 text-ink-muted shadow-sm hover:text-red-600 group-hover:flex"
         title="Delete attachment"
       >
         <X className="h-3.5 w-3.5" />
@@ -1132,7 +1134,7 @@ function WatchersPanel({
         className={`flex w-full items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm font-medium transition-colors ${
           watching
             ? 'border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+            : 'border-line bg-white text-ink-muted hover:bg-surface-sunken'
         }`}
       >
         {watching ? (
@@ -1151,7 +1153,7 @@ function WatchersPanel({
             <Avatar key={w.id} user={w} size="xs" />
           ))}
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-ink-muted">
           {watchers.length} {watchers.length === 1 ? 'watcher' : 'watchers'}
         </span>
       </div>
@@ -1173,7 +1175,7 @@ function DrawerHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-700">
+    <div className="flex items-center justify-between border-b border-line px-6 py-3 dark:border-gray-700">
       <a
         href={`/issues/${issueKey}`}
         className="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"
@@ -1187,7 +1189,7 @@ function DrawerHeader({
         {children}
         <button
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-surface-sunken hover:text-ink-muted"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -1343,7 +1345,7 @@ function MultiSelectControl({
             className={
               on
                 ? 'rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
-                : 'rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/60'
+                : 'rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted hover:bg-surface-sunken dark:border-gray-600 dark:text-ink-faint dark:hover:bg-gray-700/60'
             }
           >
             {o}
@@ -1368,7 +1370,7 @@ function VersionMultiSelect({
   onChange: (ids: string[]) => void;
 }) {
   if (versions.length === 0) {
-    return <p className="text-xs text-gray-400">No versions yet.</p>;
+    return <p className="text-xs text-ink-faint">No versions yet.</p>;
   }
   const toggle = (id: string) =>
     onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
@@ -1384,7 +1386,7 @@ function VersionMultiSelect({
             className={
               on
                 ? 'rounded-full border border-brand-500 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
-                : 'rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/60'
+                : 'rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted hover:bg-surface-sunken dark:border-gray-600 dark:text-ink-faint dark:hover:bg-gray-700/60'
             }
           >
             {v.name}
@@ -1410,7 +1412,7 @@ function DeliveryPanel({
   const pct = Math.round((delivery.done / total) * 100);
   return (
     <div className="space-y-2">
-      <div className="flex h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+      <div className="flex h-2 overflow-hidden rounded-full bg-surface-sunken dark:bg-gray-800">
         <div style={{ width: w(delivery.done) }} className="bg-emerald-500" />
         <div style={{ width: w(delivery.inProgress) }} className="bg-blue-400" />
         <div
@@ -1418,7 +1420,7 @@ function DeliveryPanel({
           className="bg-gray-300 dark:bg-gray-600"
         />
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-ink-muted dark:text-ink-faint">
         {pct}% delivered · {delivery.done}/{delivery.total} done
       </p>
       <ul className="space-y-0.5">
@@ -1426,13 +1428,13 @@ function DeliveryPanel({
           <Link
             key={l.id}
             to={`/issues/${l.issue.key}`}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-surface-sunken dark:hover:bg-gray-800"
           >
             <IssueTypeIcon type={l.issue.type} />
-            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+            <span className="font-mono text-xs text-ink-muted dark:text-ink-faint">
               {l.issue.key}
             </span>
-            <span className="truncate text-gray-700 dark:text-gray-200">
+            <span className="truncate text-ink-soft dark:text-gray-200">
               {l.issue.title}
             </span>
           </Link>
@@ -1451,11 +1453,81 @@ function Section({
 }) {
   return (
     <section className="mt-6">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
         {label}
       </h3>
       {children}
     </section>
+  );
+}
+
+function StatusDot({ category }: { category: StatusDto['category'] }) {
+  return (
+    <span
+      className="h-2 w-2 shrink-0 rounded-full"
+      style={{ backgroundColor: STATUS_CATEGORY_META[category].color }}
+    />
+  );
+}
+
+function StatusMenu({
+  statuses,
+  value,
+  onChange,
+}: {
+  statuses: StatusDto[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = statuses.find((s) => s.id === value) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-md border border-line bg-white px-2.5 py-1.5 text-left text-sm text-ink hover:border-ink-faint focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+      >
+        {current && <StatusDot category={current.category} />}
+        <span className="min-w-0 flex-1 truncate">{current?.name ?? 'Select status'}</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-line bg-white py-1 shadow-raise dark:border-gray-700 dark:bg-gray-800">
+          <div className="max-h-56 overflow-y-auto scrollbar-thin">
+            {statuses.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  onChange(s.id);
+                  setOpen(false);
+                }}
+                className={clsx(
+                  'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm',
+                  s.id === value
+                    ? 'bg-surface-sunken text-ink dark:bg-gray-700/60 dark:text-gray-100'
+                    : 'text-ink-soft hover:bg-surface-sunken dark:text-gray-200 dark:hover:bg-gray-700/60',
+                )}
+              >
+                <StatusDot category={s.category} />
+                <span className="min-w-0 flex-1 truncate">{s.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1468,7 +1540,7 @@ function Field({
 }) {
   return (
     <div>
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
         {label}
       </span>
       {children}

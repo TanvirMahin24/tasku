@@ -64,7 +64,7 @@ export default function IssuePage() {
           </Button>
         }
       />
-      <div className="flex-1 bg-gray-50 dark:bg-gray-950" />
+      <div className="flex-1 bg-surface-page dark:bg-gray-950" />
       <IssueDrawer
         projectKey={issue.projectKey}
         issueKey={issueKey}
