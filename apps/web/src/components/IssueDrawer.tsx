@@ -14,6 +14,7 @@ import {
   EyeOff,
   FileText,
   Link2,
+  ListPlus,
   Paperclip,
   Plus,
   Send,
@@ -69,6 +70,33 @@ import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { IssueTypeIcon } from '@/components/ui/icons';
 
+/** Smooth-scroll a labelled section into view within the drawer's main column. */
+function scrollToSection(id: string) {
+  document
+    .getElementById(id)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function DrawerAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Paperclip;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex h-[34px] items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-[12.5px] font-semibold text-ink-soft hover:bg-surface-sunken dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+    >
+      <Icon className="h-[15px] w-[15px]" />
+      {label}
+    </button>
+  );
+}
+
 export function IssueDrawer({
   issueKey,
   projectKey,
@@ -96,7 +124,7 @@ export function IssueDrawer({
   return createPortal(
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-gray-900/30 dark:bg-black/60" onClick={onClose} aria-hidden />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
+      <aside className="absolute right-0 top-0 flex h-full w-[960px] max-w-[90vw] flex-col border-l border-line bg-white shadow-raise dark:border-gray-700 dark:bg-gray-900">
         <DrawerBody
           issueKey={issueKey}
           projectKey={projectKey}
@@ -168,6 +196,13 @@ function DrawerBody({
     onError: (err) => setErrorMsg(apiErrorMessage(err, 'Delete failed')),
   });
 
+  const watchToggle = useMutation({
+    mutationFn: (watching: boolean) =>
+      watching ? issuesApi.unwatch(issueKey) : issuesApi.watch(issueKey),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) }),
+  });
+
   function patch(dto: UpdateIssueDto) {
     setErrorMsg(null);
     update.mutate(dto);
@@ -176,7 +211,11 @@ function DrawerBody({
   if (isLoading) {
     return (
       <>
-        <DrawerHeader issueKey={issueKey} onClose={onClose} />
+        <DrawerHeader
+          projectKey={projectKey}
+          issueKey={issueKey}
+          onClose={onClose}
+        />
         <div className="flex flex-1 items-center justify-center">
           <Spinner className="h-6 w-6" />
         </div>
@@ -187,7 +226,11 @@ function DrawerBody({
   if (error || !issue) {
     return (
       <>
-        <DrawerHeader issueKey={issueKey} onClose={onClose} />
+        <DrawerHeader
+          projectKey={projectKey}
+          issueKey={issueKey}
+          onClose={onClose}
+        />
         <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-ink-muted">
           {apiErrorMessage(error, 'Could not load this issue.')}
         </div>
@@ -197,14 +240,32 @@ function DrawerBody({
 
   return (
     <>
-      <DrawerHeader issueKey={issue.key} onClose={onClose}>
+      <DrawerHeader
+        projectKey={projectKey}
+        issueKey={issue.key}
+        type={issue.type}
+        onClose={onClose}
+      >
+        <button
+          onClick={() => watchToggle.mutate(issue.watching)}
+          disabled={watchToggle.isPending}
+          className="flex h-[30px] items-center gap-1.5 rounded-md border border-line px-2.5 text-[11.5px] font-semibold text-ink-soft hover:bg-surface-sunken dark:border-gray-700 dark:text-gray-300"
+          title={issue.watching ? 'Stop watching' : 'Watch'}
+        >
+          {issue.watching ? (
+            <Eye className="h-3.5 w-3.5" />
+          ) : (
+            <EyeOff className="h-3.5 w-3.5" />
+          )}
+          {issue.watching ? 'Watching' : 'Watch'}
+        </button>
         <button
           onClick={() => {
             if (confirm(`Delete ${issue.key}? This cannot be undone.`)) {
               remove.mutate();
             }
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-red-50 hover:text-red-600"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-md border border-line text-ink-faint hover:bg-red-50 hover:text-red-600 dark:border-gray-700"
           title="Delete issue"
         >
           <Trash2 className="h-4 w-4" />
@@ -213,7 +274,7 @@ function DrawerBody({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main column */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5">
+        <div className="flex-1 overflow-y-auto scrollbar-thin border-r border-line-soft px-6 py-5 dark:border-gray-800">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -222,8 +283,26 @@ function DrawerBody({
               if (next && next !== issue.title) patch({ title: next });
               else if (!next) setTitle(issue.title);
             }}
-            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold text-ink hover:border-line focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
+            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-[22px] font-bold leading-tight tracking-[-0.01em] text-ink hover:border-line focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-gray-100 dark:hover:border-gray-600"
           />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <DrawerAction
+              icon={Paperclip}
+              label="Attach"
+              onClick={() => scrollToSection('drawer-attachments')}
+            />
+            <DrawerAction
+              icon={ListPlus}
+              label="Add subtask"
+              onClick={() => scrollToSection('drawer-subtasks')}
+            />
+            <DrawerAction
+              icon={Link2}
+              label="Link issue"
+              onClick={() => scrollToSection('drawer-links')}
+            />
+          </div>
 
           {issue.parent && (
             <div className="mt-3">
@@ -251,7 +330,7 @@ function DrawerBody({
             />
           </Section>
 
-          <Section label="Subtasks">
+          <Section label="Subtasks" id="drawer-subtasks">
             <SubtasksPanel
               issueKey={issue.key}
               items={issue.children}
@@ -265,11 +344,11 @@ function DrawerBody({
             </Section>
           )}
 
-          <Section label="Links">
+          <Section label="Links" id="drawer-links">
             <LinksPanel issueKey={issue.key} links={issue.links} />
           </Section>
 
-          <Section label="Attachments">
+          <Section label="Attachments" id="drawer-attachments">
             <AttachmentsPanel
               issueKey={issue.key}
               attachments={issue.attachments}
@@ -286,164 +365,152 @@ function DrawerBody({
         </div>
 
         {/* Sidebar fields */}
-        <aside className="w-72 shrink-0 space-y-4 overflow-y-auto scrollbar-thin border-l border-line bg-surface-sunken px-5 py-5 dark:border-gray-700 dark:bg-gray-950/40">
+        <aside className="w-[300px] shrink-0 space-y-3.5 overflow-y-auto scrollbar-thin px-5 py-5">
           {errorMsg && (
             <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
               {errorMsg}
             </p>
           )}
 
-          <Field label="Status">
+          <div>
+            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-faint">
+              Status
+            </span>
             <StatusMenu
               statuses={statuses}
               value={issue.statusId}
               onChange={(id) => patch({ statusId: id })}
             />
-          </Field>
-
-          <Field label="Assignee">
-            <AssigneeSelect
-              users={users}
-              value={issue.assignee?.id ?? null}
-              onChange={(id) => patch({ assigneeId: id })}
-            />
-          </Field>
-
-          <Field label="Type">
-            <div className="flex items-center gap-2">
-              <IssueTypeIcon type={issue.type} />
-              <Select
-                value={issue.type}
-                onChange={(e) =>
-                  patch({ type: e.target.value as IssueDetailDto['type'] })
-                }
-                options={ISSUE_TYPES.map((t) => ({
-                  value: t,
-                  label: ISSUE_TYPE_META[t].label,
-                }))}
-              />
-            </div>
-          </Field>
-
-          <Field label="Priority">
-            <Select
-              value={issue.priority}
-              onChange={(e) =>
-                patch({ priority: e.target.value as IssueDetailDto['priority'] })
-              }
-              options={PRIORITIES.map((p) => ({
-                value: p,
-                label: PRIORITY_META[p].label,
-              }))}
-            />
-          </Field>
-
-          <Field label="Story points">
-            <input
-              type="number"
-              min={0}
-              defaultValue={issue.storyPoints ?? ''}
-              key={issue.storyPoints ?? 'none'}
-              onBlur={(e) => {
-                const raw = e.target.value.trim();
-                const next = raw === '' ? null : Number(raw);
-                if (next !== (issue.storyPoints ?? null)) {
-                  patch({ storyPoints: next });
-                }
-              }}
-              className={inputClass}
-              placeholder="—"
-            />
-          </Field>
-
-          <Field label="Labels">
-            <LabelPicker
-              labels={labels}
-              selectedIds={issue.labels.map((l) => l.id)}
-              onChange={(ids) => patch({ labelIds: ids })}
-            />
-          </Field>
-
-          <Field label="Team">
-            <Select
-              value={issue.team?.id ?? ''}
-              onChange={(e) =>
-                patch({ teamId: e.target.value ? e.target.value : null })
-              }
-              placeholder="No team"
-              options={teams.map((t) => ({ value: t.id, label: t.name }))}
-            />
-          </Field>
-
-          <Field label="Fix versions">
-            <VersionMultiSelect
-              versions={versions}
-              value={issue.versions.map((v) => v.id)}
-              onChange={(ids) => patch({ fixVersionIds: ids })}
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Start date">
-              <input
-                type="date"
-                defaultValue={toDateInput(issue.startDate)}
-                key={`start-${issue.startDate ?? 'none'}`}
-                onChange={(e) =>
-                  patch({ startDate: e.target.value || null })
-                }
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Due date">
-              <input
-                type="date"
-                defaultValue={toDateInput(issue.dueDate)}
-                key={`due-${issue.dueDate ?? 'none'}`}
-                onChange={(e) => patch({ dueDate: e.target.value || null })}
-                className={inputClass}
-              />
-            </Field>
           </div>
 
-          <Field label="Watchers">
-            <WatchersPanel
-              issueKey={issue.key}
-              watching={issue.watching}
-              watchers={issue.watchers}
-            />
-          </Field>
-
-          {issue.customFields.length > 0 && (
-            <div className="space-y-3 border-t border-line pt-3 dark:border-gray-700">
+          <div className="overflow-hidden rounded-[10px] border border-line dark:border-gray-700">
+            <div className="px-3.5 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-faint">
+              Details
+            </div>
+            <div className="flex flex-col px-3.5 pb-2.5">
+              <Row label="Assignee">
+                <AssigneeSelect
+                  users={users}
+                  value={issue.assignee?.id ?? null}
+                  onChange={(id) => patch({ assigneeId: id })}
+                />
+              </Row>
+              <Row label="Reporter">
+                <span className="flex items-center gap-1.5 text-[12px] font-medium text-ink dark:text-gray-100">
+                  <Avatar user={issue.reporter} size="xs" />
+                  {issue.reporter.displayName}
+                </span>
+              </Row>
+              <Row label="Priority">
+                <Select
+                  value={issue.priority}
+                  onChange={(e) =>
+                    patch({
+                      priority: e.target.value as IssueDetailDto['priority'],
+                    })
+                  }
+                  options={PRIORITIES.map((p) => ({
+                    value: p,
+                    label: PRIORITY_META[p].label,
+                  }))}
+                />
+              </Row>
+              <Row label="Type">
+                <div className="flex items-center gap-2">
+                  <IssueTypeIcon type={issue.type} />
+                  <Select
+                    value={issue.type}
+                    onChange={(e) =>
+                      patch({ type: e.target.value as IssueDetailDto['type'] })
+                    }
+                    options={ISSUE_TYPES.map((t) => ({
+                      value: t,
+                      label: ISSUE_TYPE_META[t].label,
+                    }))}
+                  />
+                </div>
+              </Row>
+              <Row label="Story points">
+                <input
+                  type="number"
+                  min={0}
+                  defaultValue={issue.storyPoints ?? ''}
+                  key={issue.storyPoints ?? 'none'}
+                  onBlur={(e) => {
+                    const raw = e.target.value.trim();
+                    const next = raw === '' ? null : Number(raw);
+                    if (next !== (issue.storyPoints ?? null)) {
+                      patch({ storyPoints: next });
+                    }
+                  }}
+                  className={inputClass}
+                  placeholder="—"
+                />
+              </Row>
+              <Row label="Labels" align="start">
+                <LabelPicker
+                  labels={labels}
+                  selectedIds={issue.labels.map((l) => l.id)}
+                  onChange={(ids) => patch({ labelIds: ids })}
+                />
+              </Row>
+              <Row label="Team">
+                <Select
+                  value={issue.team?.id ?? ''}
+                  onChange={(e) =>
+                    patch({ teamId: e.target.value ? e.target.value : null })
+                  }
+                  placeholder="No team"
+                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
+                />
+              </Row>
+              <Row label="Fix versions" align="start">
+                <VersionMultiSelect
+                  versions={versions}
+                  value={issue.versions.map((v) => v.id)}
+                  onChange={(ids) => patch({ fixVersionIds: ids })}
+                />
+              </Row>
+              <Row label="Start date">
+                <input
+                  type="date"
+                  defaultValue={toDateInput(issue.startDate)}
+                  key={`start-${issue.startDate ?? 'none'}`}
+                  onChange={(e) => patch({ startDate: e.target.value || null })}
+                  className={inputClass}
+                />
+              </Row>
+              <Row label="Due date">
+                <input
+                  type="date"
+                  defaultValue={toDateInput(issue.dueDate)}
+                  key={`due-${issue.dueDate ?? 'none'}`}
+                  onChange={(e) => patch({ dueDate: e.target.value || null })}
+                  className={inputClass}
+                />
+              </Row>
+              <Row label="Watchers" align="start">
+                <WatchersPanel
+                  issueKey={issue.key}
+                  watching={issue.watching}
+                  watchers={issue.watchers}
+                />
+              </Row>
               {issue.customFields.map((cf) => (
-                <Field key={cf.field.id} label={cf.field.name}>
+                <Row key={cf.field.id} label={cf.field.name} align="start">
                   <CustomFieldControl
                     issueKey={issue.key}
                     entry={cf}
                     users={users}
                   />
-                </Field>
+                </Row>
               ))}
             </div>
-          )}
+          </div>
 
-          <div className="space-y-1.5 border-t border-line pt-3 text-xs text-ink-muted dark:border-gray-700 dark:text-ink-faint">
-            <div className="flex items-center justify-between">
-              <span>Reporter</span>
-              <span className="flex items-center gap-1.5 font-medium text-ink-soft dark:text-gray-200">
-                <Avatar user={issue.reporter} size="xs" />
-                {issue.reporter.displayName}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Created</span>
-              <span>{relativeTime(issue.createdAt)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Updated</span>
-              <span>{relativeTime(issue.updatedAt)}</span>
-            </div>
+          <div className="px-1 text-[11px] text-ink-faint">
+            Created {relativeTime(issue.createdAt)} · Updated{' '}
+            {relativeTime(issue.updatedAt)}
           </div>
         </aside>
       </div>
@@ -1166,30 +1233,39 @@ function WatchersPanel({
 // ---------------------------------------------------------------------------
 
 function DrawerHeader({
+  projectKey,
   issueKey,
+  type,
   onClose,
   children,
 }: {
+  projectKey: string;
   issueKey: string;
+  type?: IssueDetailDto['type'];
   onClose: () => void;
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-line px-6 py-3 dark:border-gray-700">
-      <a
-        href={`/issues/${issueKey}`}
-        className="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800"
-        onClick={(e) => e.preventDefault()}
-        title={issueKey}
-      >
-        {issueKey}
-        <ExternalLink className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
-      </a>
-      <div className="flex items-center gap-1">
+    <div className="flex flex-none items-center border-b border-line px-5 py-3 dark:border-gray-700">
+      <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-medium text-ink-muted dark:text-gray-400">
+        <span className="truncate">{projectKey}</span>
+        <span>/</span>
+        <a
+          href={`/issues/${issueKey}`}
+          onClick={(e) => e.preventDefault()}
+          title={issueKey}
+          className="group inline-flex items-center gap-1.5 font-semibold text-ink hover:text-brand-700 dark:text-gray-100"
+        >
+          {type && <IssueTypeIcon type={type} />}
+          {issueKey}
+          <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+        </a>
+      </div>
+      <div className="ml-auto flex items-center gap-1.5">
         {children}
         <button
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-faint hover:bg-surface-sunken hover:text-ink-muted"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-md border border-line text-ink-faint hover:bg-surface-sunken hover:text-ink-muted dark:border-gray-700"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -1446,13 +1522,15 @@ function DeliveryPanel({
 
 function Section({
   label,
+  id,
   children,
 }: {
   label: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="mt-6">
+    <section id={id} className="mt-6 scroll-mt-4">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
         {label}
       </h3>
@@ -1531,19 +1609,31 @@ function StatusMenu({
   );
 }
 
-function Field({
+function Row({
   label,
   children,
+  align = 'center',
 }: {
   label: string;
   children: ReactNode;
+  align?: 'center' | 'start';
 }) {
   return (
-    <div>
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted">
+    <div
+      className={clsx(
+        'flex gap-3 py-[7px]',
+        align === 'start' ? 'items-start' : 'items-center',
+      )}
+    >
+      <span
+        className={clsx(
+          'w-[92px] flex-none text-[11.5px] font-medium text-ink-muted dark:text-gray-400',
+          align === 'start' && 'pt-1',
+        )}
+      >
         {label}
       </span>
-      {children}
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

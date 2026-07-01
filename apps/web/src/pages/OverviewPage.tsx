@@ -17,7 +17,6 @@ import {
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { Avatar } from '@/components/ui/Avatar';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 
 const CATEGORY_BAR: Record<string, string> = {
   TODO: '#94a3b8',
@@ -36,20 +35,12 @@ export default function OverviewPage() {
   });
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Overview" />
-        <PageSpinner label="Loading overview…" />
-      </>
-    );
+    return <PageSpinner label="Loading overview…" />;
   }
 
   if (!overview) {
     return (
-      <>
-        <PageHeader title="Overview" />
-        <div className="p-6 text-sm text-ink-muted">Project not found.</div>
-      </>
+      <div className="p-6 text-sm text-ink-muted">Project not found.</div>
     );
   }
 
@@ -60,11 +51,6 @@ export default function OverviewPage() {
 
   return (
     <>
-      <PageHeader
-        title={overview.project.name}
-        subtitle="Project overview"
-      />
-
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
         <div className="mx-auto max-w-5xl space-y-6">
           {/* Stat cards */}

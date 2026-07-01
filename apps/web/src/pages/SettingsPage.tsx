@@ -56,7 +56,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Select, inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 
 type Tab = 'workflow' | 'fields' | 'components' | 'members';
 
@@ -107,21 +107,11 @@ export default function SettingsPage() {
   const isAdmin = project?.role === 'ADMIN';
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Project settings" />
-        <PageSpinner label="Loading settings…" />
-      </>
-    );
+    return <PageSpinner label="Loading settings…" />;
   }
 
   return (
     <>
-      <PageHeader
-        title="Project settings"
-        subtitle={project ? `${project.name} · ${project.key}` : undefined}
-      />
-
       {!isAdmin ? (
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
           <EmptyState

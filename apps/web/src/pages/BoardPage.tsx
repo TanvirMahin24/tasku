@@ -54,7 +54,6 @@ import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge, LabelBadge } from '@/components/ui/Badge';
 import { IssueCardContent } from '@/components/IssueCard';
 import { IssueDrawer } from '@/components/IssueDrawer';
@@ -356,20 +355,14 @@ function BoardView({
   }
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Board" />
-        <PageSpinner label="Loading board…" />
-      </>
-    );
+    return <PageSpinner label="Loading board…" />;
   }
 
   if (!board) {
     return (
-      <>
-        <PageHeader title="Board" />
-        <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Board not found.</div>
-      </>
+      <div className="p-6 text-sm text-gray-500 dark:text-gray-400">
+        Board not found.
+      </div>
     );
   }
 
@@ -382,48 +375,43 @@ function BoardView({
 
   return (
     <>
-      <PageHeader
-        title={board.project.name}
-        subtitle={
-          <span className="flex items-center gap-2">
-            <BoardSwitcher
-              boards={boards}
-              currentBoardId={currentBoardId}
-              currentName={currentBoardName}
-              onSelect={onSelectBoard}
-              onCreate={() => setCreateBoardOpen(true)}
-              onToggleStar={(b) => toggleStar.mutate(b)}
-            />
-            {board.board?.teamId && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-                <span className="h-2 w-2 rounded-full bg-brand-500" />
-                Team board
-              </span>
-            )}
-            {board.activeSprint ? (
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300">
-                {board.activeSprint.name} · active
-              </Badge>
-            ) : (
-              <span className="text-gray-400">No active sprint</span>
-            )}
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span>{totalIssues} issues</span>
-          </span>
-        }
-        actions={
-          <div className="flex items-center gap-2">
-            <SwimlaneControl
-              value={swimlaneBy}
-              disabled={!canConfigureSwimlanes || updateBoard.isPending}
-              onChange={(v) => updateBoard.mutate(v)}
-            />
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> Create issue
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-6 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+        <span className="flex items-center gap-2 text-sm text-ink-muted dark:text-gray-400">
+          <BoardSwitcher
+            boards={boards}
+            currentBoardId={currentBoardId}
+            currentName={currentBoardName}
+            onSelect={onSelectBoard}
+            onCreate={() => setCreateBoardOpen(true)}
+            onToggleStar={(b) => toggleStar.mutate(b)}
+          />
+          {board.board?.teamId && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              <span className="h-2 w-2 rounded-full bg-brand-500" />
+              Team board
+            </span>
+          )}
+          {board.activeSprint ? (
+            <Badge className="bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300">
+              {board.activeSprint.name} · active
+            </Badge>
+          ) : (
+            <span className="text-gray-400">No active sprint</span>
+          )}
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span>{totalIssues} issues</span>
+        </span>
+        <div className="flex items-center gap-2">
+          <SwimlaneControl
+            value={swimlaneBy}
+            disabled={!canConfigureSwimlanes || updateBoard.isPending}
+            onChange={(v) => updateBoard.mutate(v)}
+          />
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" /> Create issue
+          </Button>
+        </div>
+      </div>
 
       <QuickFilterBar
         assignees={assignees}

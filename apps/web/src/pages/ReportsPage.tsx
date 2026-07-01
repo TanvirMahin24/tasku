@@ -11,7 +11,6 @@ import { projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/ui/PageHeader';
 
 const COLORS = {
   committed: '#c7d2fe',
@@ -42,26 +41,17 @@ export default function ReportsPage() {
   });
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Reports" />
-        <PageSpinner label="Loading reports…" />
-      </>
-    );
+    return <PageSpinner label="Loading reports…" />;
   }
 
   if (!reports) {
     return (
-      <>
-        <PageHeader title="Reports" />
-        <div className="p-6 text-sm text-ink-muted dark:text-gray-400">No report data available.</div>
-      </>
+      <div className="p-6 text-sm text-ink-muted dark:text-gray-400">No report data available.</div>
     );
   }
 
   return (
     <>
-      <PageHeader title="Reports" subtitle="Project dashboards & charts" />
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-2">
           <Card title="Velocity" subtitle="Committed vs completed points per sprint">

@@ -19,7 +19,7 @@ import { useProjectSocket } from '@/hooks/useProjectSocket';
 import { IssueTypeIcon } from '@/components/ui/icons';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
 
 const LEFT_COL_WIDTH = 280;
@@ -37,20 +37,12 @@ export default function TimelinePage() {
   });
 
   if (isLoading) {
-    return (
-      <>
-        <PageHeader title="Timeline" />
-        <PageSpinner label="Loading timeline…" />
-      </>
-    );
+    return <PageSpinner label="Loading timeline…" />;
   }
 
   if (!timeline) {
     return (
-      <>
-        <PageHeader title="Timeline" />
-        <div className="p-6 text-sm text-ink-muted dark:text-gray-400">Project not found.</div>
-      </>
+      <div className="p-6 text-sm text-ink-muted dark:text-gray-400">Project not found.</div>
     );
   }
 
@@ -58,7 +50,6 @@ export default function TimelinePage() {
 
   return (
     <>
-      <PageHeader title="Timeline" subtitle="Roadmap of scheduled work" />
       <div className="flex-1 overflow-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
         {!hasScheduled && timeline.unscheduled.length === 0 ? (
           <EmptyState

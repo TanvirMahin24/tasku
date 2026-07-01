@@ -29,7 +29,7 @@ import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
 import { IssueTypeIcon, PriorityIcon, StatusPill } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { EmptyState, PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
 
 type SortField = NonNullable<IssueListQuery['orderBy']>;
@@ -122,8 +122,6 @@ export default function ListPage() {
 
   return (
     <>
-      <PageHeader title="List" subtitle="All issues in this project" />
-
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-line-soft dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-2.5">
         <div className="relative">
