@@ -187,6 +187,22 @@ function Gantt({
 
         {/* Rows */}
         <div className="relative">
+          {/* Today marker */}
+          {(() => {
+            const todayLeft = LEFT_COL_WIDTH + offsetPx(new Date());
+            if (todayLeft <= LEFT_COL_WIDTH || todayLeft > LEFT_COL_WIDTH + totalWidth)
+              return null;
+            return (
+              <div
+                className="pointer-events-none absolute bottom-0 top-0 z-10 w-0.5 bg-[#E2483D]/70"
+                style={{ left: todayLeft }}
+              >
+                <span className="absolute -left-4 top-0 rounded-[3px] bg-[#E2483D] px-1 py-px text-[8.5px] font-bold text-white">
+                  TODAY
+                </span>
+              </div>
+            );
+          })()}
           {timeline.rows.map((row) => {
             const isEpic = row.children.length > 0;
             const isOpen = expanded.has(row.issue.id);

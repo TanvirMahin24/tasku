@@ -14,6 +14,7 @@ const TABS: { to: string; label: string }[] = [
   { to: 'backlog', label: 'Backlog' },
   { to: 'list', label: 'List' },
   { to: 'timeline', label: 'Timeline' },
+  { to: 'calendar', label: 'Calendar' },
   { to: 'report', label: 'Sprint report' },
   { to: 'reports', label: 'Reports' },
   { to: 'releases', label: 'Releases' },

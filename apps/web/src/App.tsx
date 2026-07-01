@@ -15,6 +15,7 @@ import TeamPage from '@/pages/TeamPage';
 import OverviewPage from '@/pages/OverviewPage';
 import ListPage from '@/pages/ListPage';
 import TimelinePage from '@/pages/TimelinePage';
+import CalendarPage from '@/pages/CalendarPage';
 import SearchPage from '@/pages/SearchPage';
 import ReportsPage from '@/pages/ReportsPage';
 import ReleasesPage from '@/pages/ReleasesPage';
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="boards/:boardId" element={<BoardPage />} />
             <Route path="list" element={<ListPage />} />
             <Route path="timeline" element={<TimelinePage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="backlog" element={<BacklogPage />} />
             <Route path="report" element={<SprintReportPage />} />
             <Route path="releases" element={<ReleasesPage />} />
