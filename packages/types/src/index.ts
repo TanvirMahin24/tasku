@@ -589,6 +589,21 @@ export interface IssueListQuery {
 // Search & saved filters
 // ---------------------------------------------------------------------------
 
+/** A filter condition on a custom field value. */
+export type CustomFieldOp =
+  | 'eq' // equals (text/number/date/select/user/checkbox)
+  | 'contains' // substring (text) or includes (multi-select)
+  | 'gt' // greater than (number/date)
+  | 'lt' // less than (number/date)
+  | 'set' // has any value
+  | 'notset'; // is empty
+
+export interface CustomFieldCondition {
+  fieldId: string;
+  op: CustomFieldOp;
+  value?: string | number | boolean | string[] | null;
+}
+
 export interface IssueFilterCriteria {
   text?: string;
   projectKey?: string;
@@ -599,6 +614,8 @@ export interface IssueFilterCriteria {
   priorities?: Priority[];
   teamIds?: string[];
   labelIds?: string[];
+  /** Conditions on custom field values (AND-combined). */
+  customFields?: CustomFieldCondition[];
 }
 
 export interface SearchResultDto {
@@ -905,4 +922,120 @@ export const VIEW_DEFAULT_COLUMNS: ViewColumn[] = [
 export interface UpdateLabelDto {
   name?: string;
   color?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Majhi — AI assistant (providers, chat, RAG, Google knowledge)
+// ---------------------------------------------------------------------------
+
+export type AiProvider = 'ollama' | 'gemini';
+
+/** Reported to the web app so it can gate the Majhi UI on availability. */
+export interface AiStatusDto {
+  enabled: boolean; // at least one provider configured
+  provider: AiProvider | null; // active provider
+  chatModel: string | null;
+  embedModel: string | null;
+  providers: { ollama: boolean; gemini: boolean };
+  googleConnected: boolean;
+}
+
+export type ChatContextType =
+  | 'global'
+  | 'project'
+  | 'board'
+  | 'view'
+  | 'issue'
+  | 'release'
+  | 'team'
+  | 'dashboard';
+
+/** Where the user asked Majhi from — grounds the answer in that context. */
+export interface ChatContext {
+  type: ChatContextType;
+  id?: string | null; // board id / view id / issue key / release id / team id
+  projectKey?: string | null;
+}
+
+export type ChatRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
+
+export type ChatReferenceKind =
+  | 'issue'
+  | 'knowledge'
+  | 'view'
+  | 'release'
+  | 'team'
+  | 'board';
+
+/** A citation Majhi attaches to an answer — rendered as a rich chip/link. */
+export interface ChatReference {
+  kind: ChatReferenceKind;
+  id: string;
+  key?: string | null; // e.g. issue key TASK-12
+  title: string;
+  url?: string | null; // in-app route or external (Google doc) link
+  status?: string | null;
+  meta?: Record<string, string | number | null> | null;
+}
+
+export interface ToolCallTrace {
+  name: string;
+  ok: boolean;
+  summary?: string;
+}
+
+export interface ChatMessageDto {
+  id: string;
+  role: ChatRole;
+  content: string;
+  references: ChatReference[];
+  toolCalls?: ToolCallTrace[];
+  createdAt: string;
+}
+
+export interface ChatSessionSummaryDto {
+  id: string;
+  title: string;
+  contextType: string | null;
+  contextId: string | null;
+  updatedAt: string;
+}
+
+export interface ChatSessionDto extends ChatSessionSummaryDto {
+  messages: ChatMessageDto[];
+}
+
+export interface SendChatDto {
+  message: string;
+  context?: ChatContext;
+  sessionId?: string | null;
+}
+
+export interface ChatResponseDto {
+  sessionId: string;
+  message: ChatMessageDto;
+}
+
+// --- Google knowledge integration ---
+
+export interface GoogleStatusDto {
+  connected: boolean;
+  email: string | null;
+  authUrl: string | null; // OAuth consent URL (null when not configured)
+}
+
+export type KnowledgeIngestStatus =
+  | 'PENDING'
+  | 'READY'
+  | 'ERROR'
+  | 'UNSUPPORTED';
+
+/** RAG ingestion status for a knowledge doc, surfaced in the KB UI. */
+export interface KnowledgeIngestDto {
+  id: string;
+  title: string;
+  ingestStatus: KnowledgeIngestStatus;
+  ingestError: string | null;
+  chunkCount: number;
+  ingestedAt: string | null;
 }

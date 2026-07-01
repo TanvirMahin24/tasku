@@ -22,6 +22,7 @@ import SearchPage from '@/pages/SearchPage';
 import ReportsPage from '@/pages/ReportsPage';
 import ReleasesPage from '@/pages/ReleasesPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AssistantSettingsPage from '@/pages/AssistantSettingsPage';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/teams/:id" element={<TeamPage />} />
           <Route path="/views" element={<ViewsPage />} />
           <Route path="/views/:id" element={<ViewPage />} />
+          <Route path="/settings/assistant" element={<AssistantSettingsPage />} />
           <Route path="/projects/:key" element={<SpaceLayout />}>
             <Route index element={<SpaceHome />} />
             <Route path="overview" element={<OverviewPage />} />

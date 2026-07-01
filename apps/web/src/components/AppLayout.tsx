@@ -9,6 +9,7 @@ import {
   Moon,
   Plus,
   Search,
+  Sparkles,
   Star,
   Sun,
   Table2,
@@ -24,6 +25,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { NotificationsBell } from '@/components/NotificationsBell';
 import { CommandPalette } from '@/components/CommandPalette';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
+import { MajhiWidget } from '@/components/Majhi/MajhiWidget';
 
 // Deterministic per-space accent from the reference design palette.
 const SPACE_COLORS = [
@@ -146,6 +148,9 @@ export function AppLayout() {
             <SidebarLink to="/views" icon={Table2} end>
               Views
             </SidebarLink>
+            <SidebarLink to="/settings/assistant" icon={Sparkles}>
+              Assistant
+            </SidebarLink>
             {starredViews.map((v) => (
               <NavLink
                 key={v.id}
@@ -250,6 +255,9 @@ export function AppLayout() {
           onClose={() => setCreateOpen(false)}
         />
       )}
+
+      {/* Majhi — self-gates on AI availability, so it's safe to always mount. */}
+      <MajhiWidget />
     </div>
   );
 }

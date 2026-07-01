@@ -2,12 +2,14 @@
 // components, attachments, notifications). See docs/ARCHITECTURE.md.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,8 @@ model User {
   viewsResponsible View[]     @relation("ViewResponsible")
   viewStars        ViewStar[]
   viewActivity     ViewActivity[]
+  googleConnection GoogleConnection?
+  chatSessions     ChatSession[]
 }
 
 enum Role {
@@ -171,6 +175,7 @@ model Issue {
   customValues CustomFieldValue[]
   versions    Version[]         @relation("IssueVersions")
   knowledgeDocs KnowledgeDoc[]
+  embedding   IssueEmbedding?
 
   @@index([projectId])
   @@index([statusId])
@@ -583,9 +588,18 @@ model KnowledgeDoc {
   isImport       Boolean @default(false)
   importedFromId String?
 
+  // RAG ingestion — extracted plain text + fingerprint + status.
+  content      String? // extracted plain text for retrieval
+  contentHash  String?
+  ingestStatus KnowledgeIngestStatus @default(PENDING)
+  ingestError  String?
+  ingestedAt   DateTime?
+
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  chunks KnowledgeChunk[]
 
   team         Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   issue        Issue?         @relation(fields: [issueId], references: [id], onDelete: Cascade)
@@ -661,4 +675,91 @@ model ViewActivity {
 
   view  View @relation(fields: [viewId], references: [id], onDelete: Cascade)
   actor User @relation(fields: [actorId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Majhi — AI assistant: Google integration, RAG (pgvector), chat
+// ---------------------------------------------------------------------------
+
+enum KnowledgeIngestStatus {
+  PENDING
+  READY
+  ERROR
+  UNSUPPORTED
+}
+
+/// OAuth tokens for a user's Google account (Docs/Sheets/Slides read-only).
+model GoogleConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  email        String?
+  accessToken  String
+  refreshToken String?
+  scope        String?
+  expiryDate   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// A chunk of a knowledge doc's text with its embedding vector (pgvector).
+model KnowledgeChunk {
+  id        String                       @id @default(cuid())
+  docId     String
+  ord       Int
+  content   String
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime                     @default(now())
+
+  doc KnowledgeDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+
+  @@index([docId])
+}
+
+/// Embedding of an issue (title + description + key) for task RAG.
+model IssueEmbedding {
+  issueId   String                       @id
+  textHash  String
+  embedding Unsupported("vector(768)")?
+  updatedAt DateTime                     @updatedAt
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+/// A Majhi conversation, optionally scoped to a context (board/view/issue/…).
+model ChatSession {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String   @default("New chat")
+  contextType String? // board | view | issue | release | team | project | dashboard
+  contextId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  sessionId  String
+  role       ChatRole
+  content    String
+  references Json? // [{kind, id, key?, title, url, status?, ...}]
+  toolCalls  Json? // trace of tools invoked (for transparency/debugging)
+  createdAt  DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
 }
