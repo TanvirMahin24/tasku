@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   ArrowDown,
   ArrowUp,
@@ -110,6 +110,70 @@ export function relativeTime(iso: string): string {
   } catch {
     return '';
   }
+}
+
+/** Short, human date (e.g. "Jun 30, 2026"). Returns '' for null/invalid. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return format(new Date(iso), 'MMM d, yyyy');
+  } catch {
+    return '';
+  }
+}
+
+/** For <input type="date"> values (yyyy-MM-dd). */
+export function toDateInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return format(new Date(iso), 'yyyy-MM-dd');
+  } catch {
+    return '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Duration / time-tracking
+// ---------------------------------------------------------------------------
+
+/** Format minutes as a compact "2h 30m" string. 0 -> "0m". */
+export function formatMinutes(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  if (m === 0) return '0m';
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (rem > 0) parts.push(`${rem}m`);
+  return parts.join(' ');
+}
+
+/**
+ * Parse a human duration into minutes. Accepts "2h 30m", "90m", "1.5h",
+ * "2h", "45" (bare number = minutes). Returns null if nothing parseable.
+ */
+export function parseDuration(str: string): number | null {
+  const s = str.trim().toLowerCase();
+  if (!s) return null;
+
+  // Bare number -> minutes.
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.round(n) : null;
+  }
+
+  let total = 0;
+  let matched = false;
+  const re = /(\d+(?:\.\d+)?)\s*([hm])/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(s)) !== null) {
+    matched = true;
+    const value = Number(match[1]);
+    if (!Number.isFinite(value)) continue;
+    total += match[2] === 'h' ? value * 60 : value;
+  }
+  if (!matched) return null;
+  return Math.round(total);
 }
 
 // ---------------------------------------------------------------------------

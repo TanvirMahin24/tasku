@@ -13,7 +13,16 @@ import type {
   ActivityDto,
   SprintDto,
   NotificationDto,
+  TeamSummaryDto,
+  TeamDto,
+  TeamMemberDto,
+  BoardSummaryDto,
   Role,
+  AttachmentDto,
+  IssueLinkDto,
+  WorklogDto,
+  SavedFilterDto,
+  IssueFilterCriteria,
 } from '@tasku/types';
 
 const iso = (d: Date | string | null | undefined): string =>
@@ -50,6 +59,7 @@ export function toStatusDto(s: any): StatusDto {
     name: s.name,
     category: s.category,
     order: s.order,
+    wipLimit: s.wipLimit ?? null,
   };
 }
 
@@ -80,6 +90,47 @@ function resolveComponents(issue: any): ComponentDto[] {
   return rows.map((row: any) => toComponentDto(row.component ?? row));
 }
 
+export function toTeamSummaryDto(t: any): TeamSummaryDto {
+  return {
+    id: t.id,
+    name: t.name,
+    color: t.color,
+  };
+}
+
+export function toTeamSummaryDtoOrNull(t: any): TeamSummaryDto | null {
+  return t ? toTeamSummaryDto(t) : null;
+}
+
+export function toTeamMemberDto(m: any): TeamMemberDto {
+  return {
+    user: toUserDto(m.user),
+    role: m.role,
+  };
+}
+
+export function toTeamDto(t: any, issueCount?: number): TeamDto {
+  return {
+    id: t.id,
+    name: t.name,
+    description: t.description ?? null,
+    color: t.color,
+    members: (t.members ?? []).map(toTeamMemberDto),
+    ...(issueCount !== undefined ? { issueCount } : {}),
+  };
+}
+
+export function toBoardSummaryDto(b: any): BoardSummaryDto {
+  return {
+    id: b.id,
+    name: b.name,
+    type: b.type,
+    teamId: b.teamId ?? null,
+    isDefault: b.isDefault,
+    swimlaneBy: b.swimlaneBy,
+  };
+}
+
 export function toIssueSummaryDto(i: any): IssueSummaryDto {
   return {
     id: i.id,
@@ -94,6 +145,9 @@ export function toIssueSummaryDto(i: any): IssueSummaryDto {
     sprintId: i.sprintId ?? null,
     parentId: i.parentId ?? null,
     labels: resolveLabels(i),
+    team: toTeamSummaryDtoOrNull(i.team),
+    startDate: i.startDate ? iso(i.startDate) : null,
+    dueDate: i.dueDate ? iso(i.dueDate) : null,
   };
 }
 
@@ -118,7 +172,82 @@ export function toActivityDto(a: any): ActivityDto {
   };
 }
 
-export function toIssueDetailDto(i: any, projectKey: string): IssueDetailDto {
+export function toAttachmentDto(a: any): AttachmentDto {
+  return {
+    id: a.id,
+    filename: a.filename,
+    url: a.url,
+    mimeType: a.mimeType,
+    size: a.size,
+    uploadedAt: iso(a.uploadedAt),
+  };
+}
+
+export function toWorklogDto(w: any): WorklogDto {
+  return {
+    id: w.id,
+    user: toUserDto(w.user),
+    minutes: w.minutes,
+    comment: w.comment ?? null,
+    startedAt: iso(w.startedAt),
+    createdAt: iso(w.createdAt),
+  };
+}
+
+/**
+ * Map a single IssueLink row to an IssueLinkDto. `direction` indicates whether
+ * this issue is the source ('outward') or target ('inward'); `other` is the
+ * issue on the opposite end (already summary-shaped/included).
+ */
+export function toIssueLinkDto(
+  link: any,
+  direction: 'outward' | 'inward',
+  other: any,
+): IssueLinkDto {
+  return {
+    id: link.id,
+    type: link.type,
+    direction,
+    issue: toIssueSummaryDto(other),
+  };
+}
+
+export function toSavedFilterDto(f: any): SavedFilterDto {
+  return {
+    id: f.id,
+    name: f.name,
+    criteria: (f.criteria ?? {}) as IssueFilterCriteria,
+    shared: f.shared,
+    owner: toUserDto(f.owner),
+  };
+}
+
+/**
+ * Build the combined `links` array for an issue detail: outLinks become
+ * 'outward' (target on the other end), inLinks become 'inward' (source on the
+ * other end). Requires `outLinks.target` and `inLinks.source` to be included.
+ */
+function resolveLinks(i: any): IssueLinkDto[] {
+  const out = (i.outLinks ?? []).map((l: any) =>
+    toIssueLinkDto(l, 'outward', l.target),
+  );
+  const inward = (i.inLinks ?? []).map((l: any) =>
+    toIssueLinkDto(l, 'inward', l.source),
+  );
+  return [...out, ...inward];
+}
+
+export function toIssueDetailDto(
+  i: any,
+  projectKey: string,
+  currentUserId?: string,
+): IssueDetailDto {
+  const watchers = (i.watchers ?? []).map((w: any) => toUserDto(w.user));
+  const worklogs = (i.worklogs ?? []).map(toWorklogDto);
+  const timeSpent = (i.worklogs ?? []).reduce(
+    (sum: number, w: any) => sum + (w.minutes ?? 0),
+    0,
+  );
   return {
     ...toIssueSummaryDto(i),
     description: i.description ?? null,
@@ -127,6 +256,16 @@ export function toIssueDetailDto(i: any, projectKey: string): IssueDetailDto {
     comments: (i.comments ?? []).map(toCommentDto),
     activities: (i.activities ?? []).map(toActivityDto),
     children: (i.children ?? []).map(toIssueSummaryDto),
+    parent: i.parent ? toIssueSummaryDto(i.parent) : null,
+    attachments: (i.attachments ?? []).map(toAttachmentDto),
+    links: resolveLinks(i),
+    watchers,
+    watching: currentUserId
+      ? (i.watchers ?? []).some((w: any) => w.userId === currentUserId)
+      : false,
+    worklogs,
+    timeSpent,
+    originalEstimate: i.originalEstimate ?? null,
     projectKey,
     createdAt: iso(i.createdAt),
     updatedAt: iso(i.updatedAt),

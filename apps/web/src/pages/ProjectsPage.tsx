@@ -64,7 +64,7 @@ function ProjectCard({ project }: { project: ProjectDto }) {
   return (
     <Link
       to={`/projects/${project.key}/board`}
-      className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
+      className="group flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         <span
@@ -74,7 +74,7 @@ function ProjectCard({ project }: { project: ProjectDto }) {
           {project.key.slice(0, 2)}
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-gray-900 group-hover:text-brand-700">
+          <p className="truncate font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-700">
             {project.name}
           </p>
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -82,15 +82,15 @@ function ProjectCard({ project }: { project: ProjectDto }) {
           </p>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500">
+      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
         {project.description || 'No description'}
       </p>
-      <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+      <div className="mt-3 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
         <span className="text-xs text-gray-400">
           {project.role ? project.role.toLowerCase() : 'member'}
         </span>
         {project.lead && (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <Avatar user={project.lead} size="xs" />
             {project.lead.displayName}
           </span>
@@ -174,7 +174,7 @@ export function CreateProjectModal({
     >
       <form id="create-project-form" onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Key <span className="text-red-500">*</span>
           </span>
           <input
@@ -186,12 +186,12 @@ export function CreateProjectModal({
             placeholder="TASK"
             autoFocus
           />
-          <span className="mt-1 block text-xs text-gray-400">
+          <span className="mt-1 block text-xs text-gray-400 dark:text-gray-400">
             Used as the prefix for issues, e.g. {key || 'TASK'}-1.
           </span>
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Name <span className="text-red-500">*</span>
           </span>
           <input
@@ -202,7 +202,7 @@ export function CreateProjectModal({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">
+          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
             Description
           </span>
           <textarea
@@ -213,7 +213,7 @@ export function CreateProjectModal({
           />
         </label>
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}

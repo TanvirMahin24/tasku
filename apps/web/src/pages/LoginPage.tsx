@@ -62,7 +62,7 @@ export default function LoginPage() {
           required
         />
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
             {error}
           </p>
         )}
@@ -70,7 +70,7 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Don&apos;t have an account?{' '}
         <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
           Create one
@@ -94,18 +94,18 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-gradient-to-br from-gray-50 to-brand-50 px-4 py-12">
+    <div className="flex min-h-full items-center justify-center bg-gradient-to-br from-gray-50 to-brand-50 dark:from-gray-950 dark:to-gray-950 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-lg">
             <CheckCircle2 className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
             {title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-xl sm:p-8">
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-xl sm:p-8">
           {children}
         </div>
       </div>
@@ -125,7 +125,7 @@ export function Field({
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-700">
+      <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
         {label}
       </span>
       <input

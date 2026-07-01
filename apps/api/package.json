@@ -5,9 +5,11 @@
   "description": "Tasku backend — NestJS REST + WebSocket API.",
   "main": "dist/main.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "db:reset": "prisma migrate reset",
     "start:prod": "node dist/main.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -16,7 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",

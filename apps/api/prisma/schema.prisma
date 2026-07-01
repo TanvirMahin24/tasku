@@ -30,6 +30,10 @@ model User {
   activities    ActivityLog[]
   notifications Notification[]   @relation("Recipient")
   ledProjects   Project[]        @relation("ProjectLead")
+  teamMemberships TeamMember[]
+  watching      Watcher[]
+  worklogs      Worklog[]
+  savedFilters  SavedFilter[]
 }
 
 enum Role {
@@ -72,6 +76,7 @@ model Project {
   sprints    Sprint[]
   labels     Label[]
   components Component[]
+  boards     Board[]
 }
 
 enum StatusCategory {
@@ -86,6 +91,7 @@ model Status {
   name      String
   category  StatusCategory @default(TODO)
   order     Int            // column order on the board
+  wipLimit  Int?           // optional work-in-progress limit for the column
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues  Issue[]
@@ -127,7 +133,11 @@ model Issue {
   assigneeId  String?
   parentId    String?   // epic link / subtask parent
   sprintId    String?
+  teamId      String?
   storyPoints Int?
+  originalEstimate Int? // minutes; logged time = sum of worklogs
+  startDate   DateTime? // timeline / roadmap
+  dueDate     DateTime? // timeline / roadmap
   rank        String    // lexorank for board ordering
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -136,6 +146,7 @@ model Issue {
   status      Status        @relation(fields: [statusId], references: [id])
   reporter    User          @relation("Reporter", fields: [reporterId], references: [id])
   assignee    User?         @relation("Assignee", fields: [assigneeId], references: [id])
+  team        Team?         @relation(fields: [teamId], references: [id])
   parent      Issue?        @relation("IssueHierarchy", fields: [parentId], references: [id])
   children    Issue[]       @relation("IssueHierarchy")
   sprint      Sprint?       @relation(fields: [sprintId], references: [id])
@@ -146,10 +157,14 @@ model Issue {
   activities  ActivityLog[]
   outLinks    IssueLink[]   @relation("LinkSource")
   inLinks     IssueLink[]   @relation("LinkTarget")
+  watchers    Watcher[]
+  worklogs    Worklog[]
 
   @@index([projectId])
   @@index([statusId])
   @@index([sprintId])
+  @@index([teamId])
+  @@index([parentId])
 }
 
 enum LinkType {
@@ -304,4 +319,117 @@ model Notification {
   recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, read])
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+enum TeamRole {
+  LEAD
+  MEMBER
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  members TeamMember[]
+  issues  Issue[]
+  boards  Board[]
+}
+
+model TeamMember {
+  id     String   @id @default(cuid())
+  teamId String
+  userId String
+  role   TeamRole @default(MEMBER)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+// ---------------------------------------------------------------------------
+// Boards — a project can have several boards (a default board plus
+// team-scoped / filtered boards). Columns are the project's statuses;
+// `filter` narrows which issues appear (assignees, labels, types, priorities).
+// ---------------------------------------------------------------------------
+
+enum BoardType {
+  KANBAN
+  SCRUM
+}
+
+enum BoardSwimlane {
+  NONE
+  ASSIGNEE
+  EPIC
+  TEAM
+  PRIORITY
+}
+
+model Board {
+  id         String        @id @default(cuid())
+  projectId  String
+  name       String
+  type       BoardType     @default(KANBAN)
+  teamId     String?
+  filter     Json?         // { assigneeIds?, labelIds?, types?, priorities? }
+  swimlaneBy BoardSwimlane @default(NONE)
+  isDefault  Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team    Team?   @relation(fields: [teamId], references: [id])
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Watchers, worklogs (time tracking), saved filters
+// ---------------------------------------------------------------------------
+
+model Watcher {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, userId])
+}
+
+model Worklog {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  minutes   Int
+  comment   String?
+  startedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+}
+
+model SavedFilter {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  criteria  Json // { text?, projectKey?, statusIds?, assigneeIds?, types?, priorities?, teamIds?, labelIds? }
+  shared    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }

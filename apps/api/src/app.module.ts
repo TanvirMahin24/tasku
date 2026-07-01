@@ -8,10 +8,20 @@ import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { IssuesModule } from './issues/issues.module';
 import { BoardModule } from './board/board.module';
+import { BoardsModule } from './boards/boards.module';
 import { SprintsModule } from './sprints/sprints.module';
 import { CommentsModule } from './comments/comments.module';
 import { LabelsModule } from './labels/labels.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { TeamsModule } from './teams/teams.module';
+import { TimelineModule } from './timeline/timeline.module';
+import { OverviewModule } from './overview/overview.module';
+import { SearchModule } from './search/search.module';
+import { LinksModule } from './links/links.module';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { WatchersModule } from './watchers/watchers.module';
+import { WorklogsModule } from './worklogs/worklogs.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -24,10 +34,20 @@ import { NotificationsModule } from './notifications/notifications.module';
     ProjectsModule,
     IssuesModule,
     BoardModule,
+    BoardsModule,
     SprintsModule,
     CommentsModule,
     LabelsModule,
     NotificationsModule,
+    TeamsModule,
+    TimelineModule,
+    OverviewModule,
+    SearchModule,
+    LinksModule,
+    AttachmentsModule,
+    WatchersModule,
+    WorklogsModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

@@ -15,6 +15,9 @@ import {
   IssueType,
   Priority,
   SprintState,
+  TeamRole,
+  BoardType,
+  BoardSwimlane,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { LexoRank } from 'lexorank';
@@ -111,6 +114,25 @@ async function main() {
     (s) => s.category === StatusCategory.IN_PROGRESS,
   )!;
   const done = project.statuses.find((s) => s.category === StatusCategory.DONE)!;
+
+  // Wave 2: a WIP limit on the In Progress column.
+  await prisma.status.update({
+    where: { id: inProgress.id },
+    data: { wipLimit: 3 },
+  });
+
+  // Wave 2: a couple of components (only if the project has none yet).
+  const componentCount = await prisma.component.count({
+    where: { projectId: project.id },
+  });
+  if (componentCount === 0) {
+    await prisma.component.createMany({
+      data: [
+        { projectId: project.id, name: 'Frontend' },
+        { projectId: project.id, name: 'Backend' },
+      ],
+    });
+  }
 
   const labelByName = new Map(project.labels.map((l) => [l.name, l.id]));
 
@@ -379,6 +401,213 @@ async function main() {
         type: 'MENTIONED',
         issueKey: commentTarget.key,
         message: `You were mentioned on ${commentTarget.key}`,
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wave 1: links, worklogs, estimates, watchers, saved filters
+  // (only runs on a fresh project create; guarded by upserts/skip checks)
+  // ---------------------------------------------------------------------------
+  const task1 = await prisma.issue.findUnique({ where: { key: 'TASK-1' } });
+  const task2 = await prisma.issue.findUnique({ where: { key: 'TASK-2' } });
+
+  if (task1 && task2) {
+    // TASK-2 BLOCKS TASK-1.
+    const existingLink = await prisma.issueLink.findUnique({
+      where: {
+        sourceId_targetId_type: {
+          sourceId: task2.id,
+          targetId: task1.id,
+          type: 'BLOCKS',
+        },
+      },
+    });
+    if (!existingLink) {
+      await prisma.issueLink.create({
+        data: { sourceId: task2.id, targetId: task1.id, type: 'BLOCKS' },
+      });
+      await prisma.activityLog.create({
+        data: {
+          issueId: task2.id,
+          actorId: alice.id,
+          field: 'link',
+          newValue: `BLOCKS ${task1.key}`,
+        },
+      });
+    }
+
+    // Original estimates (minutes).
+    await prisma.issue.update({
+      where: { id: task1.id },
+      data: { originalEstimate: 480 },
+    });
+    await prisma.issue.update({
+      where: { id: task2.id },
+      data: { originalEstimate: 240 },
+    });
+
+    // Worklogs on TASK-1: Alice 90m, Bob 120m.
+    const existingWorklogs = await prisma.worklog.count({
+      where: { issueId: task1.id },
+    });
+    if (existingWorklogs === 0) {
+      await prisma.worklog.create({
+        data: {
+          issueId: task1.id,
+          userId: alice.id,
+          minutes: 90,
+          comment: 'Initial board layout.',
+        },
+      });
+      await prisma.worklog.create({
+        data: {
+          issueId: task1.id,
+          userId: bob.id,
+          minutes: 120,
+          comment: 'Drag-and-drop wiring.',
+        },
+      });
+    }
+
+    // Watchers: Alice + Bob watch TASK-1.
+    await prisma.watcher.upsert({
+      where: { issueId_userId: { issueId: task1.id, userId: alice.id } },
+      update: {},
+      create: { issueId: task1.id, userId: alice.id },
+    });
+    await prisma.watcher.upsert({
+      where: { issueId_userId: { issueId: task1.id, userId: bob.id } },
+      update: {},
+      create: { issueId: task1.id, userId: bob.id },
+    });
+  }
+
+  // One shared saved filter owned by Alice.
+  const existingFilter = await prisma.savedFilter.findFirst({
+    where: { ownerId: alice.id, name: 'My open bugs' },
+  });
+  if (!existingFilter) {
+    await prisma.savedFilter.create({
+      data: {
+        ownerId: alice.id,
+        name: 'My open bugs',
+        shared: true,
+        criteria: {
+          types: ['BUG'],
+          statusCategories: ['TODO', 'IN_PROGRESS'],
+        },
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Teams (idempotent: name is unique)
+  // ---------------------------------------------------------------------------
+  const platformTeam = await prisma.team.upsert({
+    where: { name: 'Platform' },
+    update: {},
+    create: {
+      name: 'Platform',
+      description: 'Backend & infrastructure.',
+      color: '#6366f1',
+      members: {
+        create: [
+          { userId: alice.id, role: TeamRole.LEAD },
+          { userId: bob.id, role: TeamRole.MEMBER },
+        ],
+      },
+    },
+  });
+  const designTeam = await prisma.team.upsert({
+    where: { name: 'Design' },
+    update: {},
+    create: {
+      name: 'Design',
+      description: 'Product design & UX.',
+      color: '#ec4899',
+      members: {
+        create: [
+          { userId: carol.id, role: TeamRole.LEAD },
+          { userId: alice.id, role: TeamRole.MEMBER },
+        ],
+      },
+    },
+  });
+
+  // ---------------------------------------------------------------------------
+  // Team assignment + timeline dates on a few issues
+  // ---------------------------------------------------------------------------
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const offset = (days: number) => new Date(now + days * day);
+
+  // EPIC (TASK-1): Platform team, spanning ~6 weeks.
+  await prisma.issue.update({
+    where: { key: 'TASK-1' },
+    data: {
+      teamId: platformTeam.id,
+      startDate: offset(-7),
+      dueDate: offset(35),
+    },
+  });
+
+  // Platform team + dates.
+  await prisma.issue.updateMany({
+    where: { key: { in: ['TASK-2', 'TASK-4', 'TASK-5'] } },
+    data: { teamId: platformTeam.id },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-2' },
+    data: { startDate: offset(0), dueDate: offset(10) },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-4' },
+    data: { startDate: offset(3), dueDate: offset(14) },
+  });
+
+  // Design team + dates.
+  await prisma.issue.updateMany({
+    where: { key: { in: ['TASK-3', 'TASK-7'] } },
+    data: { teamId: designTeam.id },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-3' },
+    data: { startDate: offset(7), dueDate: offset(21) },
+  });
+  await prisma.issue.update({
+    where: { key: 'TASK-7' },
+    data: { startDate: offset(14), dueDate: offset(28) },
+  });
+
+  // ---------------------------------------------------------------------------
+  // Boards: ensure a default "Main Board" + a team-scoped "Platform Board"
+  // ---------------------------------------------------------------------------
+  const existingDefaultBoard = await prisma.board.findFirst({
+    where: { projectId: project.id, isDefault: true },
+  });
+  if (!existingDefaultBoard) {
+    await prisma.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Main Board',
+        type: BoardType.KANBAN,
+        isDefault: true,
+      },
+    });
+  }
+  const existingPlatformBoard = await prisma.board.findFirst({
+    where: { projectId: project.id, name: 'Platform Board' },
+  });
+  if (!existingPlatformBoard) {
+    await prisma.board.create({
+      data: {
+        projectId: project.id,
+        name: 'Platform Board',
+        type: BoardType.KANBAN,
+        teamId: platformTeam.id,
+        swimlaneBy: BoardSwimlane.ASSIGNEE,
+        isDefault: false,
       },
     });
   }

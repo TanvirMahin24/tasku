@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -13,6 +14,7 @@ import type {
   StatusDto,
   LabelDto,
   SprintDto,
+  ComponentDto,
 } from '@tasku/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../common/membership.service';
@@ -22,11 +24,18 @@ import {
   toLabelDto,
   toSprintDto,
   toUserDto,
+  toComponentDto,
 } from '../common/mappers';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateLabelDto } from './dto/create-label.dto';
+import { CreateStatusDto } from './dto/create-status.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { ReorderStatusesDto } from './dto/reorder-statuses.dto';
+import { CreateComponentDto } from './dto/create-component.dto';
+import { UpdateComponentDto } from './dto/update-component.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 // The three columns every new project starts with.
 const DEFAULT_STATUSES: Array<{
@@ -183,6 +192,88 @@ export class ProjectsService {
     return { role: member.role, user: toUserDto(member.user) };
   }
 
+  async updateMemberRole(
+    key: string,
+    targetUserId: string,
+    dto: UpdateMemberRoleDto,
+    userId: string,
+  ) {
+    const project = await this.prisma.project.findUnique({ where: { key } });
+    if (!project) {
+      throw new NotFoundException(`Project ${key} not found`);
+    }
+    await this.membership.requireAdmin(project.id, userId);
+
+    const member = await this.prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: project.id, userId: targetUserId },
+      },
+    });
+    if (!member) {
+      throw new NotFoundException('User is not a member of this project');
+    }
+
+    // Demoting the last ADMIN would leave the project without an admin.
+    if (member.role === Role.ADMIN && dto.role !== Role.ADMIN) {
+      const adminCount = await this.prisma.projectMember.count({
+        where: { projectId: project.id, role: Role.ADMIN },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException(
+          'Cannot demote the last admin of the project',
+        );
+      }
+    }
+
+    const updated = await this.prisma.projectMember.update({
+      where: {
+        projectId_userId: { projectId: project.id, userId: targetUserId },
+      },
+      data: { role: dto.role },
+      include: { user: true },
+    });
+    return { role: updated.role, user: toUserDto(updated.user) };
+  }
+
+  async removeMember(key: string, targetUserId: string, userId: string) {
+    const project = await this.prisma.project.findUnique({ where: { key } });
+    if (!project) {
+      throw new NotFoundException(`Project ${key} not found`);
+    }
+    await this.membership.requireAdmin(project.id, userId);
+
+    const member = await this.prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: project.id, userId: targetUserId },
+      },
+    });
+    if (!member) {
+      throw new NotFoundException('User is not a member of this project');
+    }
+
+    if (project.leadId === targetUserId) {
+      throw new BadRequestException('Cannot remove the project lead');
+    }
+
+    if (member.role === Role.ADMIN) {
+      const adminCount = await this.prisma.projectMember.count({
+        where: { projectId: project.id, role: Role.ADMIN },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException(
+          'Cannot remove the last admin of the project',
+        );
+      }
+    }
+
+    await this.prisma.projectMember.delete({
+      where: {
+        projectId_userId: { projectId: project.id, userId: targetUserId },
+      },
+    });
+    return { success: true };
+  }
+
   // --- Statuses --------------------------------------------------------------
 
   async listStatuses(key: string, userId: string): Promise<StatusDto[]> {
@@ -192,6 +283,219 @@ export class ProjectsService {
       orderBy: { order: 'asc' },
     });
     return statuses.map(toStatusDto);
+  }
+
+  async createStatus(
+    key: string,
+    dto: CreateStatusDto,
+    userId: string,
+  ): Promise<StatusDto> {
+    const project = await this.prisma.project.findUnique({ where: { key } });
+    if (!project) {
+      throw new NotFoundException(`Project ${key} not found`);
+    }
+    await this.membership.requireAdmin(project.id, userId);
+
+    const existing = await this.prisma.status.findUnique({
+      where: { projectId_name: { projectId: project.id, name: dto.name } },
+    });
+    if (existing) {
+      throw new ConflictException(`Status "${dto.name}" already exists`);
+    }
+
+    const last = await this.prisma.status.findFirst({
+      where: { projectId: project.id },
+      orderBy: { order: 'desc' },
+    });
+    const order = last ? last.order + 1 : 0;
+
+    const status = await this.prisma.status.create({
+      data: {
+        projectId: project.id,
+        name: dto.name,
+        category: dto.category,
+        order,
+      },
+    });
+    return toStatusDto(status);
+  }
+
+  async updateStatus(
+    id: string,
+    dto: UpdateStatusDto,
+    userId: string,
+  ): Promise<StatusDto> {
+    const status = await this.prisma.status.findUnique({ where: { id } });
+    if (!status) {
+      throw new NotFoundException(`Status ${id} not found`);
+    }
+    await this.membership.requireAdmin(status.projectId, userId);
+
+    if (dto.name !== undefined && dto.name !== status.name) {
+      const clash = await this.prisma.status.findUnique({
+        where: {
+          projectId_name: { projectId: status.projectId, name: dto.name },
+        },
+      });
+      if (clash) {
+        throw new ConflictException(`Status "${dto.name}" already exists`);
+      }
+    }
+
+    const data: Prisma.StatusUpdateInput = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.category !== undefined) data.category = dto.category;
+    if (dto.wipLimit !== undefined) data.wipLimit = dto.wipLimit;
+
+    const updated = await this.prisma.status.update({
+      where: { id },
+      data,
+    });
+    return toStatusDto(updated);
+  }
+
+  async deleteStatus(id: string, userId: string): Promise<{ success: boolean }> {
+    const status = await this.prisma.status.findUnique({ where: { id } });
+    if (!status) {
+      throw new NotFoundException(`Status ${id} not found`);
+    }
+    await this.membership.requireAdmin(status.projectId, userId);
+
+    const issueCount = await this.prisma.issue.count({
+      where: { statusId: id },
+    });
+    if (issueCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete a status that still has issues',
+      );
+    }
+
+    const statusCount = await this.prisma.status.count({
+      where: { projectId: status.projectId },
+    });
+    if (statusCount <= 1) {
+      throw new BadRequestException('Cannot delete the last status');
+    }
+
+    await this.prisma.status.delete({ where: { id } });
+    return { success: true };
+  }
+
+  async reorderStatuses(
+    key: string,
+    dto: ReorderStatusesDto,
+    userId: string,
+  ): Promise<StatusDto[]> {
+    const project = await this.prisma.project.findUnique({ where: { key } });
+    if (!project) {
+      throw new NotFoundException(`Project ${key} not found`);
+    }
+    await this.membership.requireAdmin(project.id, userId);
+
+    const statuses = await this.prisma.status.findMany({
+      where: { projectId: project.id },
+    });
+    const ids = new Set(statuses.map((s) => s.id));
+
+    // The payload must reference exactly the project's statuses, once each.
+    if (
+      dto.statusIds.length !== statuses.length ||
+      new Set(dto.statusIds).size !== dto.statusIds.length ||
+      !dto.statusIds.every((sid) => ids.has(sid))
+    ) {
+      throw new BadRequestException(
+        'statusIds must list every status of the project exactly once',
+      );
+    }
+
+    await this.prisma.$transaction(
+      dto.statusIds.map((sid, order) =>
+        this.prisma.status.update({ where: { id: sid }, data: { order } }),
+      ),
+    );
+
+    const reordered = await this.prisma.status.findMany({
+      where: { projectId: project.id },
+      orderBy: { order: 'asc' },
+    });
+    return reordered.map(toStatusDto);
+  }
+
+  // --- Components ------------------------------------------------------------
+
+  async listComponents(key: string, userId: string): Promise<ComponentDto[]> {
+    const project = await this.membership.getProjectForMember(key, userId);
+    const components = await this.prisma.component.findMany({
+      where: { projectId: project.id },
+      orderBy: { name: 'asc' },
+    });
+    return components.map(toComponentDto);
+  }
+
+  async createComponent(
+    key: string,
+    dto: CreateComponentDto,
+    userId: string,
+  ): Promise<ComponentDto> {
+    const project = await this.prisma.project.findUnique({ where: { key } });
+    if (!project) {
+      throw new NotFoundException(`Project ${key} not found`);
+    }
+    await this.membership.requireAdmin(project.id, userId);
+
+    const existing = await this.prisma.component.findUnique({
+      where: { projectId_name: { projectId: project.id, name: dto.name } },
+    });
+    if (existing) {
+      throw new ConflictException(`Component "${dto.name}" already exists`);
+    }
+
+    const component = await this.prisma.component.create({
+      data: { projectId: project.id, name: dto.name },
+    });
+    return toComponentDto(component);
+  }
+
+  async updateComponent(
+    id: string,
+    dto: UpdateComponentDto,
+    userId: string,
+  ): Promise<ComponentDto> {
+    const component = await this.prisma.component.findUnique({ where: { id } });
+    if (!component) {
+      throw new NotFoundException(`Component ${id} not found`);
+    }
+    await this.membership.requireAdmin(component.projectId, userId);
+
+    if (dto.name !== component.name) {
+      const clash = await this.prisma.component.findUnique({
+        where: {
+          projectId_name: { projectId: component.projectId, name: dto.name },
+        },
+      });
+      if (clash) {
+        throw new ConflictException(`Component "${dto.name}" already exists`);
+      }
+    }
+
+    const updated = await this.prisma.component.update({
+      where: { id },
+      data: { name: dto.name },
+    });
+    return toComponentDto(updated);
+  }
+
+  async deleteComponent(
+    id: string,
+    userId: string,
+  ): Promise<{ success: boolean }> {
+    const component = await this.prisma.component.findUnique({ where: { id } });
+    if (!component) {
+      throw new NotFoundException(`Component ${id} not found`);
+    }
+    await this.membership.requireAdmin(component.projectId, userId);
+    await this.prisma.component.delete({ where: { id } });
+    return { success: true };
   }
 
   // --- Labels ----------------------------------------------------------------
