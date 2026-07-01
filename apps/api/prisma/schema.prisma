@@ -35,6 +35,7 @@ model User {
   worklogs      Worklog[]
   savedFilters  SavedFilter[]
   boardStars    BoardStar[]
+  knowledgeDocs KnowledgeDoc[]
 }
 
 enum Role {
@@ -165,6 +166,7 @@ model Issue {
   worklogs    Worklog[]
   customValues CustomFieldValue[]
   versions    Version[]         @relation("IssueVersions")
+  knowledgeDocs KnowledgeDoc[]
 
   @@index([projectId])
   @@index([statusId])
@@ -348,6 +350,7 @@ model Team {
   members TeamMember[]
   issues  Issue[]
   boards  Board[]
+  knowledgeDocs KnowledgeDoc[]
 }
 
 model TeamMember {
@@ -525,4 +528,61 @@ model Version {
 
   @@unique([projectId, name])
   @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge base — a doc (uploaded FILE or external LINK, e.g. a Google Doc /
+// Sheet) owned by exactly one Team OR one Issue. Issues inherit their
+// ancestors' docs (computed at read time, ancestors-only). A doc can be
+// imported into another KB as a live reference (isImport + importedFromId) —
+// its content resolves from the source doc.
+// ---------------------------------------------------------------------------
+
+enum KnowledgeType {
+  FILE
+  LINK
+}
+
+enum KnowledgeLinkKind {
+  GOOGLE_DOC
+  GOOGLE_SHEET
+  GOOGLE_SLIDES
+  GENERIC
+}
+
+model KnowledgeDoc {
+  id       String            @id @default(cuid())
+  title    String
+  type     KnowledgeType
+
+  // LINK docs
+  url      String?
+  linkKind KnowledgeLinkKind?
+
+  // FILE docs — bytes on disk as `${id}${ext}`, streamed via /knowledge/:id/raw
+  filename String?
+  mimeType String?
+  size     Int?
+
+  // Owner: exactly one of teamId / issueId is set.
+  teamId  String?
+  issueId String?
+
+  // Live import: a reference to a doc in another KB (content resolves from it).
+  isImport       Boolean @default(false)
+  importedFromId String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team         Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  issue        Issue?         @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  importedFrom KnowledgeDoc?  @relation("KnowledgeImport", fields: [importedFromId], references: [id], onDelete: SetNull)
+  imports      KnowledgeDoc[] @relation("KnowledgeImport")
+  createdBy    User           @relation(fields: [createdById], references: [id])
+
+  @@index([teamId])
+  @@index([issueId])
+  @@index([importedFromId])
 }

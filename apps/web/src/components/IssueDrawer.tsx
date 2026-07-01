@@ -69,6 +69,7 @@ import { AssigneeSelect } from '@/components/ui/AssigneeSelect';
 import { DescriptionEditor } from '@/components/DescriptionEditor';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { IssueTypeIcon } from '@/components/ui/icons';
+import { KnowledgeBase } from '@/components/KnowledgeBase';
 
 /** Smooth-scroll a labelled section into view within the drawer's main column. */
 function scrollToSection(id: string) {
@@ -336,6 +337,10 @@ function DrawerBody({
               items={issue.children}
               statuses={statuses}
             />
+          </Section>
+
+          <Section label="Knowledge base" id="drawer-knowledge">
+            <KnowledgeBase scope={{ kind: 'issue', issueKey: issue.key }} />
           </Section>
 
           {issue.delivery && (

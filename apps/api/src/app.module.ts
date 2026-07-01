@@ -25,6 +25,7 @@ import { ReportsModule } from './reports/reports.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { VersionsModule } from './versions/versions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CustomFieldsModule,
     VersionsModule,
     DashboardModule,
+    KnowledgeModule,
   ],
 })
 export class AppModule {}

@@ -42,4 +42,10 @@ export const qk = {
   filters: ['filters'] as const,
   filter: (id: string) => ['filter', id] as const,
   filterResults: (id: string) => ['filter', id, 'results'] as const,
+
+  teamKnowledge: (id: string) => ['team', id, 'knowledge'] as const,
+  issueKnowledge: (issueKey: string) =>
+    ['issue', issueKey, 'knowledge'] as const,
+  importableKnowledge: (search: string) =>
+    ['knowledge', 'importable', search] as const,
 };

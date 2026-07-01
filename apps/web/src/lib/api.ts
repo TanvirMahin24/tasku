@@ -20,8 +20,11 @@ import type {
   CreateTeamDto,
   CreateWorklogDto,
   CreateCustomFieldDto,
+  CreateKnowledgeLinkDto,
   CreateVersionDto,
   CustomFieldDefDto,
+  KnowledgeDocDto,
+  ImportableKnowledgeDocDto,
   CustomFieldValue,
   DashboardDto,
   UpdateVersionDto,
@@ -403,6 +406,81 @@ export async function fetchAttachmentBlobUrl(
   attachmentId: string,
 ): Promise<string> {
   const res = await api.get<Blob>(`/attachments/${attachmentId}/raw`, {
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(res.data);
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge base
+// ---------------------------------------------------------------------------
+
+function knowledgeFileForm(file: File, title?: string): FormData {
+  const form = new FormData();
+  form.append('file', file);
+  if (title?.trim()) form.append('title', title.trim());
+  return form;
+}
+
+export const knowledgeApi = {
+  listTeam: (teamId: string) =>
+    api.get<KnowledgeDocDto[]>(`/teams/${teamId}/knowledge`).then((r) => r.data),
+  listIssue: (issueKey: string) =>
+    api
+      .get<KnowledgeDocDto[]>(`/issues/${issueKey}/knowledge`)
+      .then((r) => r.data),
+
+  addTeamLink: (teamId: string, dto: CreateKnowledgeLinkDto) =>
+    api
+      .post<KnowledgeDocDto>(`/teams/${teamId}/knowledge/link`, dto)
+      .then((r) => r.data),
+  addIssueLink: (issueKey: string, dto: CreateKnowledgeLinkDto) =>
+    api
+      .post<KnowledgeDocDto>(`/issues/${issueKey}/knowledge/link`, dto)
+      .then((r) => r.data),
+
+  uploadTeamFile: (teamId: string, file: File, title?: string) =>
+    api
+      .post<KnowledgeDocDto>(
+        `/teams/${teamId}/knowledge/file`,
+        knowledgeFileForm(file, title),
+        { headers: { 'Content-Type': undefined } },
+      )
+      .then((r) => r.data),
+  uploadIssueFile: (issueKey: string, file: File, title?: string) =>
+    api
+      .post<KnowledgeDocDto>(
+        `/issues/${issueKey}/knowledge/file`,
+        knowledgeFileForm(file, title),
+        { headers: { 'Content-Type': undefined } },
+      )
+      .then((r) => r.data),
+
+  importToTeam: (teamId: string, sourceDocId: string) =>
+    api
+      .post<KnowledgeDocDto>(`/teams/${teamId}/knowledge/import`, { sourceDocId })
+      .then((r) => r.data),
+  importToIssue: (issueKey: string, sourceDocId: string) =>
+    api
+      .post<KnowledgeDocDto>(`/issues/${issueKey}/knowledge/import`, {
+        sourceDocId,
+      })
+      .then((r) => r.data),
+
+  importable: (search?: string) =>
+    api
+      .get<ImportableKnowledgeDocDto[]>(`/knowledge/importable`, {
+        params: search ? { search } : undefined,
+      })
+      .then((r) => r.data),
+
+  remove: (id: string) =>
+    api.delete<void>(`/knowledge/${id}`).then((r) => r.data),
+};
+
+/** Fetch a KB file's bytes (with auth) as an object URL for download. */
+export async function fetchKnowledgeBlobUrl(id: string): Promise<string> {
+  const res = await api.get<Blob>(`/knowledge/${id}/raw`, {
     responseType: 'blob',
   });
   return URL.createObjectURL(res.data);

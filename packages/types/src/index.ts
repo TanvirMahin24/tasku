@@ -697,3 +697,63 @@ export type WsEvent =
   | { type: 'sprint.started'; projectKey: string; sprintId: string }
   // pushed to a single user's room (not a project room)
   | { type: 'notification.created' };
+
+// ---------------------------------------------------------------------------
+// Knowledge base
+// ---------------------------------------------------------------------------
+
+export type KnowledgeType = 'FILE' | 'LINK';
+export type KnowledgeLinkKind =
+  | 'GOOGLE_DOC'
+  | 'GOOGLE_SHEET'
+  | 'GOOGLE_SLIDES'
+  | 'GENERIC';
+
+/** Where a doc surfaces from — drives the source badge on each KB card. */
+export interface KnowledgeSource {
+  // 'self' = owned by the KB being viewed; 'inherited' = from an ancestor issue.
+  origin: 'self' | 'inherited';
+  // Ancestor the doc is inherited from (when origin === 'inherited').
+  issueKey?: string;
+  issueTitle?: string;
+  // Import provenance (independent of origin — a doc can be self + imported).
+  imported: boolean;
+  importedFrom?: { kind: 'team' | 'issue'; label: string } | null;
+  // The imported source doc was deleted.
+  importBroken?: boolean;
+}
+
+export interface KnowledgeDocDto {
+  id: string;
+  title: string;
+  type: KnowledgeType;
+  url: string | null; // LINK
+  linkKind: KnowledgeLinkKind | null; // LINK
+  filename: string | null; // FILE
+  mimeType: string | null; // FILE
+  size: number | null; // FILE
+  rawUrl: string | null; // FILE stream/download url
+  createdBy: UserDto;
+  createdAt: string;
+  source: KnowledgeSource;
+  canDelete: boolean; // only docs owned by the KB being viewed are deletable here
+}
+
+export interface CreateKnowledgeLinkDto {
+  title: string;
+  url: string;
+}
+
+export interface ImportKnowledgeDto {
+  sourceDocId: string;
+}
+
+/** A doc from another KB, offered in the import picker. */
+export interface ImportableKnowledgeDocDto {
+  id: string;
+  title: string;
+  type: KnowledgeType;
+  linkKind: KnowledgeLinkKind | null;
+  ownerKind: 'team' | 'issue';
+  ownerLabel: string; // team name / issue key
+}
