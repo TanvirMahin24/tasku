@@ -270,7 +270,7 @@ function SpaceRow({
       )}
     >
       <NavLink
-        to={`/projects/${project.key}/board`}
+        to={`/projects/${project.key}`}
         className={clsx(
           'flex min-w-0 flex-1 items-center gap-2.5 py-[7px] text-[12.5px]',
           active

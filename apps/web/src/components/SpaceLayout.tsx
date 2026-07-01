@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { projectsApi } from '@/lib/api';
@@ -79,4 +79,17 @@ export function SpaceLayout() {
       </div>
     </div>
   );
+}
+
+/** Index route for /projects/:key — redirects to the space's default tab. */
+export function SpaceHome() {
+  const { key = '' } = useParams<{ key: string }>();
+  const { data: projects, isLoading } = useQuery({
+    queryKey: qk.projects,
+    queryFn: projectsApi.list,
+  });
+  if (isLoading || !projects) return null;
+  const project = projects.find((p) => p.key === key);
+  const tab = project?.defaultTab || 'board';
+  return <Navigate to={`/projects/${key}/${tab}`} replace />;
 }

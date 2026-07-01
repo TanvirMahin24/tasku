@@ -25,6 +25,7 @@ import {
   GripVertical,
   Lock,
   Plus,
+  Settings2,
   Shield,
   SlidersHorizontal,
   Trash2,
@@ -58,9 +59,10 @@ import { Select, inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/PageHeader';
 
-type Tab = 'workflow' | 'fields' | 'components' | 'members';
+type Tab = 'general' | 'workflow' | 'fields' | 'components' | 'members';
 
 const TABS: { id: Tab; label: string; icon: typeof Workflow }[] = [
+  { id: 'general', label: 'General', icon: Settings2 },
   { id: 'workflow', label: 'Columns & workflow', icon: Workflow },
   { id: 'fields', label: 'Custom fields', icon: SlidersHorizontal },
   { id: 'components', label: 'Components', icon: ComponentIcon },
@@ -96,7 +98,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 export default function SettingsPage() {
   const { key = '' } = useParams<{ key: string }>();
-  const [tab, setTab] = useState<Tab>('workflow');
+  const [tab, setTab] = useState<Tab>('general');
 
   const { data: project, isLoading } = useQuery({
     queryKey: qk.project(key),
@@ -146,6 +148,7 @@ export default function SettingsPage() {
 
           <div className="min-w-0 flex-1 overflow-y-auto p-6 scrollbar-thin dark:bg-gray-950">
             <div className="mx-auto max-w-3xl">
+              {tab === 'general' && <GeneralTab projectKey={key} />}
               {tab === 'workflow' && <WorkflowTab projectKey={key} />}
               {tab === 'fields' && <CustomFieldsTab projectKey={key} />}
               {tab === 'components' && <ComponentsTab projectKey={key} />}
@@ -155,6 +158,59 @@ export default function SettingsPage() {
         </div>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// General tab
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TAB_OPTIONS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'board', label: 'Board' },
+  { value: 'backlog', label: 'Backlog' },
+  { value: 'list', label: 'List' },
+  { value: 'timeline', label: 'Timeline' },
+  { value: 'calendar', label: 'Calendar' },
+  { value: 'report', label: 'Sprint report' },
+  { value: 'reports', label: 'Reports' },
+  { value: 'releases', label: 'Releases' },
+];
+
+function GeneralTab({ projectKey }: { projectKey: string }) {
+  const queryClient = useQueryClient();
+  const { data: project } = useQuery({
+    queryKey: qk.project(projectKey),
+    queryFn: () => projectsApi.get(projectKey),
+    enabled: !!projectKey,
+  });
+  const save = useMutation({
+    mutationFn: (defaultTab: string) =>
+      projectsApi.update(projectKey, { defaultTab }),
+    onSuccess: (p) => {
+      queryClient.setQueryData(qk.project(projectKey), p);
+      queryClient.invalidateQueries({ queryKey: qk.projects });
+    },
+  });
+  return (
+    <section>
+      <h2 className="mb-4 text-base font-semibold text-ink dark:text-gray-100">
+        General
+      </h2>
+      <label className="block max-w-sm">
+        <span className="block text-sm font-medium text-ink-soft dark:text-gray-200">
+          Default tab
+        </span>
+        <span className="mb-2 block text-xs text-ink-faint">
+          The tab that opens when someone enters this space.
+        </span>
+        <Select
+          value={project?.defaultTab ?? 'board'}
+          onChange={(e) => save.mutate(e.target.value)}
+          options={DEFAULT_TAB_OPTIONS}
+        />
+      </label>
+    </section>
   );
 }
 

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/AppLayout';
-import { SpaceLayout } from '@/components/SpaceLayout';
+import { SpaceLayout, SpaceHome } from '@/components/SpaceLayout';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ProjectsPage from '@/pages/ProjectsPage';
@@ -36,6 +36,7 @@ export default function App() {
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:id" element={<TeamPage />} />
           <Route path="/projects/:key" element={<SpaceLayout />}>
+            <Route index element={<SpaceHome />} />
             <Route path="overview" element={<OverviewPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="board" element={<BoardPage />} />

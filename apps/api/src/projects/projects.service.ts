@@ -133,6 +133,7 @@ export class ProjectsService {
         ? { connect: { id: dto.leadId } }
         : { disconnect: true };
     }
+    if (dto.defaultTab !== undefined) data.defaultTab = dto.defaultTab;
 
     const updated = await this.prisma.project.update({
       where: { id: project.id },

@@ -55,6 +55,7 @@ export function toProjectDto(p: any, role?: Role): ProjectDto {
     description: p.description ?? null,
     lead: toUserDtoOrNull(p.lead),
     ...(role ? { role } : {}),
+    defaultTab: p.defaultTab ?? 'board',
     createdAt: iso(p.createdAt),
   };
 }

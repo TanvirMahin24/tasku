@@ -73,7 +73,15 @@ export interface ProjectDto {
   description: string | null;
   lead: UserDto | null;
   role?: Role;
+  defaultTab: string; // space tab opened by default (e.g. 'board')
   createdAt: string;
+}
+
+export interface UpdateProjectDto {
+  name?: string;
+  description?: string;
+  leadId?: string;
+  defaultTab?: string;
 }
 
 export interface StatusDto {

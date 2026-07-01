@@ -13,4 +13,8 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsString()
   leadId?: string;
+
+  @IsOptional()
+  @IsString()
+  defaultTab?: string;
 }

@@ -56,6 +56,7 @@ import type {
   UpdateCustomFieldDto,
   UpdateIssueDto,
   UpdateMemberRoleDto,
+  UpdateProjectDto,
   UpdateStatusDto,
   UpdateTeamDto,
   UserDto,
@@ -157,6 +158,8 @@ export const projectsApi = {
     api.get<ProjectDto>(`/projects/${key}`).then((r) => r.data),
   create: (dto: CreateProjectDto) =>
     api.post<ProjectDto>('/projects', dto).then((r) => r.data),
+  update: (key: string, dto: UpdateProjectDto) =>
+    api.patch<ProjectDto>(`/projects/${key}`, dto).then((r) => r.data),
   statuses: (key: string) =>
     api.get<StatusDto[]>(`/projects/${key}/statuses`).then((r) => r.data),
   labels: (key: string) =>

@@ -68,6 +68,7 @@ model Project {
   description String?
   leadId      String?
   issueSeq    Int      @default(0) // per-project monotonic counter
+  defaultTab  String   @default("board") // space tab opened by default
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
