@@ -27,6 +27,7 @@ import { VersionsModule } from './versions/versions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { MentionsModule } from './mentions/mentions.module';
+import { ViewsModule } from './views/views.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { MentionsModule } from './mentions/mentions.module';
     DashboardModule,
     KnowledgeModule,
     MentionsModule,
+    ViewsModule,
   ],
 })
 export class AppModule {}

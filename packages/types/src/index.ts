@@ -784,3 +784,120 @@ export interface ImportableKnowledgeDocDto {
   ownerKind: 'team' | 'issue';
   ownerLabel: string; // team name / issue key
 }
+
+// ---------------------------------------------------------------------------
+// Views — saved, filtered cross-space issue tables with configurable columns
+// ---------------------------------------------------------------------------
+
+export type ViewScope = 'GLOBAL' | 'TEAM';
+
+/** One column in a view table: a field key, optionally pinned (sticky-left). */
+export interface ViewColumn {
+  key: string; // standard field key OR `cf:<customFieldId>`
+  pinned?: boolean;
+}
+
+export interface ViewSummaryDto {
+  id: string;
+  title: string;
+  description: string | null;
+  scope: ViewScope;
+  scopeTeam: TeamSummaryDto | null;
+  responsible: UserDto | null;
+  teams: TeamSummaryDto[]; // associated teams (metadata)
+  startDate: string | null;
+  endDate: string | null;
+  starred: boolean;
+  archived: boolean;
+  createdBy: UserDto;
+  updatedAt: string;
+}
+
+export interface ViewDto extends ViewSummaryDto {
+  criteria: IssueFilterCriteria;
+  columns: ViewColumn[];
+  canEdit: boolean;
+}
+
+export interface CreateViewDto {
+  title: string;
+  description?: string | null;
+  scope?: ViewScope;
+  teamId?: string | null; // scope team (when scope = TEAM)
+  responsibleId?: string | null;
+  teamIds?: string[]; // associated teams
+  startDate?: string | null;
+  endDate?: string | null;
+  criteria?: IssueFilterCriteria;
+  columns?: ViewColumn[];
+}
+
+export type UpdateViewDto = Partial<CreateViewDto>;
+
+/** A resolved row in a view's results table. */
+export interface ViewRowDto {
+  id: string;
+  key: string;
+  type: IssueType;
+  title: string;
+  status: { id: string; name: string; category: StatusCategory } | null;
+  priority: Priority;
+  assignee: UserDto | null;
+  reporter: UserDto | null;
+  teams: TeamSummaryDto[];
+  labels: LabelDto[];
+  storyPoints: number | null;
+  sprintId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  projectKey: string;
+  projectName: string;
+  customValues: Record<string, CustomFieldValue>; // by custom field id
+}
+
+/** An available column offered in the view editor. */
+export interface ViewFieldDto {
+  key: string;
+  label: string;
+  kind: 'standard' | 'custom';
+  projectKey?: string; // for custom fields
+}
+
+export interface ViewActivityDto {
+  id: string;
+  action: string;
+  detail: string | null;
+  actor: UserDto;
+  createdAt: string;
+}
+
+/** Standard (non-custom) columns available to every view. */
+export const VIEW_STANDARD_FIELDS: { key: string; label: string }[] = [
+  { key: 'key', label: 'Key' },
+  { key: 'type', label: 'Type' },
+  { key: 'title', label: 'Title' },
+  { key: 'status', label: 'Status' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'assignee', label: 'Assignee' },
+  { key: 'reporter', label: 'Reporter' },
+  { key: 'teams', label: 'Teams' },
+  { key: 'labels', label: 'Labels' },
+  { key: 'storyPoints', label: 'Story points' },
+  { key: 'startDate', label: 'Start date' },
+  { key: 'dueDate', label: 'Due date' },
+  { key: 'project', label: 'Space' },
+  { key: 'updatedAt', label: 'Updated' },
+];
+
+export const VIEW_DEFAULT_COLUMNS: ViewColumn[] = [
+  { key: 'key', pinned: true },
+  { key: 'title', pinned: true },
+  { key: 'status' },
+  { key: 'assignee' },
+  { key: 'priority' },
+  { key: 'teams' },
+  { key: 'dueDate' },
+  { key: 'project' },
+];

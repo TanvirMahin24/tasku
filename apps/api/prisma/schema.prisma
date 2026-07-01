@@ -36,6 +36,10 @@ model User {
   savedFilters  SavedFilter[]
   boardStars    BoardStar[]
   knowledgeDocs KnowledgeDoc[]
+  viewsCreated     View[]     @relation("ViewCreator")
+  viewsResponsible View[]     @relation("ViewResponsible")
+  viewStars        ViewStar[]
+  viewActivity     ViewActivity[]
 }
 
 enum Role {
@@ -356,6 +360,8 @@ model Team {
   issues  Issue[]        @relation("IssueTeams")
   boards  Board[]
   knowledgeDocs KnowledgeDoc[]
+  viewsScoped     View[] @relation("ViewScopeTeam")
+  viewsAssociated View[] @relation("ViewTeams")
 }
 
 model TeamMember {
@@ -590,4 +596,69 @@ model KnowledgeDoc {
   @@index([teamId])
   @@index([issueId])
   @@index([importedFromId])
+}
+
+// ---------------------------------------------------------------------------
+// Views — a saved, filtered cross-space issue table with a configurable column
+// set (standard + custom fields, ordered, pinnable). Global or team-scoped,
+// starrable, with display-only metadata. Soft-deleted (archived) + audited.
+// ---------------------------------------------------------------------------
+
+enum ViewScope {
+  GLOBAL
+  TEAM
+}
+
+model View {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  scope         ViewScope @default(GLOBAL)
+  teamId        String? // scope team (when scope = TEAM)
+  // display-only metadata
+  startDate     DateTime?
+  endDate       DateTime?
+  responsibleId String?
+  // filter + column config
+  criteria      Json // IssueFilterCriteria
+  columns       Json // ViewColumn[] = [{ key, pinned? }]
+  // lifecycle
+  archived      Boolean   @default(false)
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  scopeTeam   Team?          @relation("ViewScopeTeam", fields: [teamId], references: [id], onDelete: SetNull)
+  responsible User?          @relation("ViewResponsible", fields: [responsibleId], references: [id])
+  createdBy   User           @relation("ViewCreator", fields: [createdById], references: [id])
+  teams       Team[]         @relation("ViewTeams") // associated teams (metadata)
+  stars       ViewStar[]
+  activity    ViewActivity[]
+
+  @@index([teamId])
+  @@index([archived])
+}
+
+model ViewStar {
+  id     String @id @default(cuid())
+  viewId String
+  userId String
+
+  view View @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([viewId, userId])
+  @@index([userId])
+}
+
+model ViewActivity {
+  id        String   @id @default(cuid())
+  viewId    String
+  actorId   String
+  action    String // 'created' | 'updated' | 'archived' | 'restored'
+  detail    String?
+  createdAt DateTime @default(now())
+
+  view  View @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id])
 }
