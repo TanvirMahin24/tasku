@@ -61,6 +61,13 @@ import type {
   UpdateTeamDto,
   UserDto,
   WorklogDto,
+  ViewSummaryDto,
+  ViewDto,
+  ViewRowDto,
+  ViewFieldDto,
+  ViewActivityDto,
+  CreateViewDto,
+  UpdateViewDto,
 } from '@tasku/types';
 
 const API_URL =
@@ -501,6 +508,37 @@ export const mentionsApi = {
         params: q ? { q } : undefined,
       })
       .then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Views
+// ---------------------------------------------------------------------------
+
+export const viewsApi = {
+  list: (starred?: boolean) =>
+    api
+      .get<ViewSummaryDto[]>('/views', {
+        params: starred ? { starred: 'true' } : undefined,
+      })
+      .then((r) => r.data),
+  fields: () => api.get<ViewFieldDto[]>('/views/fields').then((r) => r.data),
+  get: (id: string) => api.get<ViewDto>(`/views/${id}`).then((r) => r.data),
+  create: (dto: CreateViewDto) =>
+    api.post<ViewDto>('/views', dto).then((r) => r.data),
+  update: (id: string, dto: UpdateViewDto) =>
+    api.patch<ViewDto>(`/views/${id}`, dto).then((r) => r.data),
+  archive: (id: string) =>
+    api.post<{ archived: boolean }>(`/views/${id}/archive`).then((r) => r.data),
+  restore: (id: string) =>
+    api.post<{ archived: boolean }>(`/views/${id}/restore`).then((r) => r.data),
+  star: (id: string) =>
+    api.post<{ starred: boolean }>(`/views/${id}/star`).then((r) => r.data),
+  unstar: (id: string) =>
+    api.delete<{ starred: boolean }>(`/views/${id}/star`).then((r) => r.data),
+  results: (id: string) =>
+    api.get<ViewRowDto[]>(`/views/${id}/results`).then((r) => r.data),
+  activity: (id: string) =>
+    api.get<ViewActivityDto[]>(`/views/${id}/activity`).then((r) => r.data),
 };
 
 // ---------------------------------------------------------------------------

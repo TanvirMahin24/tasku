@@ -11,11 +11,12 @@ import {
   Search,
   Star,
   Sun,
+  Table2,
   Users,
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { ProjectDto } from '@tasku/types';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, viewsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
@@ -78,6 +79,11 @@ export function AppLayout() {
   const activeProject = projects.find((p) => p.key === key) ?? null;
   const starredProjects = projects.filter((p) => starred.has(p.key));
 
+  const { data: starredViews = [] } = useQuery({
+    queryKey: qk.views(true),
+    queryFn: () => viewsApi.list(true),
+  });
+
   // Global ⌘K / Ctrl-K to toggle the command palette.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -137,6 +143,26 @@ export function AppLayout() {
             <SidebarLink to="/teams" icon={Users}>
               Teams
             </SidebarLink>
+            <SidebarLink to="/views" icon={Table2} end>
+              Views
+            </SidebarLink>
+            {starredViews.map((v) => (
+              <NavLink
+                key={v.id}
+                to={`/views/${v.id}`}
+                className={({ isActive }) =>
+                  clsx(
+                    'ml-6 flex items-center gap-2 rounded-md py-[6px] pl-2.5 pr-2 text-[12.5px] transition-colors',
+                    isActive
+                      ? 'bg-brand-50 font-semibold text-brand-600 dark:bg-brand-600/25 dark:text-brand-200'
+                      : 'font-medium text-ink-soft hover:bg-surface-sunken dark:text-gray-300 dark:hover:bg-white/10',
+                  )
+                }
+              >
+                <Star className="h-3 w-3 shrink-0" fill="#FCA700" stroke="#FCA700" />
+                <span className="truncate">{v.title}</span>
+              </NavLink>
+            ))}
           </div>
 
           {/* Starred */}

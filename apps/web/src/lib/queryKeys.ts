@@ -51,4 +51,10 @@ export const qk = {
 
   mentionables: (projectKey: string, q: string) =>
     ['project', projectKey, 'mentionables', q] as const,
+
+  views: (starred?: boolean) => ['views', starred ? 'starred' : 'all'] as const,
+  view: (id: string) => ['view', id] as const,
+  viewResults: (id: string) => ['view', id, 'results'] as const,
+  viewActivity: (id: string) => ['view', id, 'activity'] as const,
+  viewFields: ['view', 'fields'] as const,
 };

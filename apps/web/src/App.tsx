@@ -12,6 +12,8 @@ import SprintReportPage from '@/pages/SprintReportPage';
 import IssuePage from '@/pages/IssuePage';
 import TeamsPage from '@/pages/TeamsPage';
 import TeamPage from '@/pages/TeamPage';
+import ViewsPage from '@/pages/ViewsPage';
+import ViewPage from '@/pages/ViewPage';
 import OverviewPage from '@/pages/OverviewPage';
 import ListPage from '@/pages/ListPage';
 import TimelinePage from '@/pages/TimelinePage';
@@ -36,6 +38,8 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:id" element={<TeamPage />} />
+          <Route path="/views" element={<ViewsPage />} />
+          <Route path="/views/:id" element={<ViewPage />} />
           <Route path="/projects/:key" element={<SpaceLayout />}>
             <Route index element={<SpaceHome />} />
             <Route path="overview" element={<OverviewPage />} />
