@@ -396,7 +396,7 @@ function DrawerBody({
             />
           </div>
 
-          <div className="overflow-hidden rounded-[10px] border border-line dark:border-gray-700">
+          <div className="rounded-[10px] border border-line dark:border-gray-700">
             <div className="px-3.5 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-faint">
               Details
             </div>
