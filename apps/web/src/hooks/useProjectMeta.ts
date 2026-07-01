@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { projectsApi, sprintsApi, usersApi } from '@/lib/api';
+import { projectsApi, sprintsApi, usersApi, versionsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 
 /** Fetches the building blocks needed by issue create/edit forms. */
@@ -23,12 +23,18 @@ export function useProjectMeta(projectKey: string) {
     queryKey: qk.users,
     queryFn: usersApi.list,
   });
+  const versions = useQuery({
+    queryKey: qk.versions(projectKey),
+    queryFn: () => versionsApi.list(projectKey),
+    enabled: !!projectKey,
+  });
 
   return {
     statuses: statuses.data ?? [],
     labels: labels.data ?? [],
     sprints: sprints.data ?? [],
     users: users.data ?? [],
+    versions: versions.data ?? [],
     isLoading:
       statuses.isLoading || labels.isLoading || sprints.isLoading || users.isLoading,
   };

@@ -2,12 +2,18 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FolderKanban, Plus } from 'lucide-react';
-import type { ProjectDto } from '@tasku/types';
-import { apiErrorMessage, projectsApi } from '@/lib/api';
+import type {
+  IssueSummaryDto,
+  ProjectDto,
+  StatusCategory,
+} from '@tasku/types';
+import { apiErrorMessage, projectsApi, searchApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { avatarColor } from '@/lib/format';
+import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
 import { Modal } from '@/components/ui/Modal';
 import { inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -19,44 +25,180 @@ export default function ProjectsPage() {
     queryKey: qk.projects,
     queryFn: projectsApi.list,
   });
+  const { data: recommended = [] } = useQuery({
+    queryKey: qk.recommendedProjects,
+    queryFn: projectsApi.recommended,
+  });
 
   return (
     <>
       <PageHeader
-        title="Projects"
-        subtitle="All projects you have access to"
+        title="Spaces"
+        subtitle="Your spaces and everything assigned to you"
         actions={
           <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Create project
+            <Plus className="h-4 w-4" /> Create space
           </Button>
         }
       />
 
       <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-        {isLoading ? (
-          <PageSpinner label="Loading projects…" />
-        ) : !projects || projects.length === 0 ? (
-          <EmptyState
-            icon={<FolderKanban className="h-10 w-10" />}
-            title="No projects yet"
-            description="Create your first project to start tracking work."
-            action={
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" /> Create project
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {projects.map((p) => (
-              <ProjectCard key={p.id} project={p} />
-            ))}
-          </div>
-        )}
+        <div className="mx-auto max-w-6xl space-y-8">
+          <YourTasks />
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Your spaces
+            </h2>
+            {isLoading ? (
+              <PageSpinner label="Loading spaces…" />
+            ) : !projects || projects.length === 0 ? (
+              <EmptyState
+                icon={<FolderKanban className="h-10 w-10" />}
+                title="No spaces yet"
+                description="Create your first space to start tracking work."
+                action={
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" /> Create space
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {projects.map((p) => (
+                  <ProjectCard key={p.id} project={p} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {recommended.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Recommended spaces
+              </h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {recommended.map((p) => (
+                  <RecommendedCard key={p.id} project={p} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
 
       <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
+  );
+}
+
+const TASK_FILTERS: { label: string; value: StatusCategory | 'ALL' }[] = [
+  { label: 'All', value: 'ALL' },
+  { label: 'To do', value: 'TODO' },
+  { label: 'In progress', value: 'IN_PROGRESS' },
+  { label: 'Done', value: 'DONE' },
+];
+
+function YourTasks() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const [filter, setFilter] = useState<StatusCategory | 'ALL'>('ALL');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['spaces', 'my-tasks', userId, filter],
+    queryFn: () =>
+      searchApi.issues({
+        assigneeIds: userId ? [userId] : [],
+        statusCategories: filter === 'ALL' ? undefined : [filter],
+      }),
+    enabled: !!userId,
+  });
+  const issues = data?.issues ?? [];
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Your tasks
+        </h2>
+        <div className="flex gap-1">
+          {TASK_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={
+                filter === f.value
+                  ? 'rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white'
+                  : 'rounded-md px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        {isLoading ? (
+          <p className="px-2 py-3 text-sm text-gray-400">Loading…</p>
+        ) : issues.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-gray-400">No tasks match.</p>
+        ) : (
+          <ul className="space-y-0.5">
+            {issues.map((i) => (
+              <TaskRow key={i.id} issue={i} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TaskRow({ issue }: { issue: IssueSummaryDto }) {
+  return (
+    <li>
+      <Link
+        to={`/issues/${issue.key}`}
+        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+      >
+        <IssueTypeIcon type={issue.type} />
+        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+          {issue.key}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">
+          {issue.title}
+        </span>
+        <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
+      </Link>
+    </li>
+  );
+}
+
+function RecommendedCard({ project }: { project: ProjectDto }) {
+  return (
+    <div className="flex flex-col rounded-xl border border-dashed border-gray-300 bg-white/50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
+          style={{ backgroundColor: avatarColor(project.key) }}
+        >
+          {project.key.slice(0, 2)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-gray-900 dark:text-gray-100">
+            {project.name}
+          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            {project.key}
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-gray-500 dark:text-gray-400">
+        {project.description || 'No description'}
+      </p>
+      <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-gray-700">
+        Ask an admin to add you
+      </p>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   ChevronsUp,
   Equal,
   Layers,
+  Lightbulb,
   GitBranch,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ export const ISSUE_TYPE_META: Record<
   IssueType,
   { icon: LucideIcon; color: string; label: string }
 > = {
+  IDEA: { icon: Lightbulb, color: '#eab308', label: 'Idea' },
   EPIC: { icon: Layers, color: '#8b5cf6', label: 'Epic' },
   STORY: { icon: Bookmark, color: '#22c55e', label: 'Story' },
   TASK: { icon: CheckSquare, color: '#3b82f6', label: 'Task' },

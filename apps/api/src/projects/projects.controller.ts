@@ -45,6 +45,12 @@ export class ProjectsController {
     return this.projects.findAllForUser(user.id);
   }
 
+  // Projects the user is NOT a member of (suggested "spaces" to join).
+  @Get('recommended')
+  recommended(@CurrentUser() user: AuthUser): Promise<ProjectDto[]> {
+    return this.projects.recommended(user.id);
+  }
+
   @Get(':key')
   findOne(
     @Param('key') key: string,

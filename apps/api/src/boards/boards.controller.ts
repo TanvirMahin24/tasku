@@ -61,6 +61,16 @@ export class BoardsController {
     return this.boards.remove(id, user.id);
   }
 
+  @Post('boards/:id/star')
+  star(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.boards.star(id, user.id);
+  }
+
+  @Delete('boards/:id/star')
+  unstar(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.boards.unstar(id, user.id);
+  }
+
   @Get('boards/:id/board')
   getBoardView(
     @Param('id') id: string,

@@ -8,7 +8,11 @@ import {
   StatusCategory,
   type Prisma,
 } from '@prisma/client';
-import type { IssueDetailDto, IssueSummaryDto } from '@tasku/types';
+import {
+  ISSUE_TYPE_RANK,
+  type IssueDetailDto,
+  type IssueSummaryDto,
+} from '@tasku/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../common/membership.service';
 import { EventsService } from '../events/events.service';
@@ -42,10 +46,21 @@ const DETAIL_INCLUDE = {
   children: { include: SUMMARY_INCLUDE, orderBy: { rank: 'asc' } },
   parent: { include: SUMMARY_INCLUDE },
   attachments: { orderBy: { uploadedAt: 'desc' } },
-  outLinks: { include: { target: { include: SUMMARY_INCLUDE } } },
-  inLinks: { include: { source: { include: SUMMARY_INCLUDE } } },
+  outLinks: {
+    include: { target: { include: { ...SUMMARY_INCLUDE, status: true } } },
+  },
+  inLinks: {
+    include: { source: { include: { ...SUMMARY_INCLUDE, status: true } } },
+  },
   watchers: { include: { user: true } },
   worklogs: { include: { user: true }, orderBy: { startedAt: 'desc' } },
+  customValues: true,
+  versions: true,
+  project: {
+    include: {
+      customFields: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
+    },
+  },
 } satisfies Prisma.IssueInclude;
 
 // Priority -> numeric weight for list ordering (HIGHEST first when desc).
@@ -66,6 +81,35 @@ export class IssuesService {
   ) {}
 
   // ---------------------------------------------------------------------------
+  // Hierarchy (Idea > Epic > Story/Task/Bug > Subtask): a parent must rank
+  // strictly above its child.
+  // ---------------------------------------------------------------------------
+  private rankOf(type: string): number {
+    return ISSUE_TYPE_RANK[type as keyof typeof ISSUE_TYPE_RANK];
+  }
+
+  private assertRank(parentType: string, childType: string): void {
+    if (this.rankOf(parentType) >= this.rankOf(childType)) {
+      throw new BadRequestException(
+        `A ${childType.toLowerCase()} can't be a child of a ${parentType.toLowerCase()}.`,
+      );
+    }
+  }
+
+  private async assertValidParent(
+    parentId: string | null | undefined,
+    childType: string,
+  ): Promise<void> {
+    if (!parentId) return;
+    const parent = await this.prisma.issue.findUnique({
+      where: { id: parentId },
+      select: { type: true },
+    });
+    if (!parent) throw new NotFoundException('Parent issue not found');
+    this.assertRank(parent.type, childType);
+  }
+
+  // ---------------------------------------------------------------------------
   // Create
   // ---------------------------------------------------------------------------
   async create(
@@ -74,6 +118,8 @@ export class IssuesService {
     userId: string,
   ): Promise<IssueDetailDto> {
     const project = await this.membership.getProjectForMember(key, userId);
+
+    await this.assertValidParent(dto.parentId, dto.type);
 
     // Resolve target status: explicit, else the first TODO column, else any.
     const statusId = await this.resolveCreateStatus(project.id, dto.statusId);
@@ -151,6 +197,11 @@ export class IssuesService {
       projectKey: project.key,
       issue: toIssueSummaryDto(full),
     });
+    if (created.assigneeId && created.assigneeId !== userId) {
+      this.events.emitToUser(created.assigneeId, {
+        type: 'notification.created',
+      });
+    }
     return toIssueDetailDto(full, project.key, userId);
   }
 
@@ -192,6 +243,7 @@ export class IssuesService {
     userId: string,
   ): Promise<IssueDetailDto> {
     const parent = await this.membership.getIssueForMember(issueKey, userId);
+    this.assertRank(parent.type, 'SUBTASK');
     const project = await this.prisma.project.findUnique({
       where: { id: parent.projectId },
       select: { key: true },
@@ -260,6 +312,11 @@ export class IssuesService {
       projectKey: project!.key,
       issue: toIssueSummaryDto(full),
     });
+    if (created.assigneeId && created.assigneeId !== userId) {
+      this.events.emitToUser(created.assigneeId, {
+        type: 'notification.created',
+      });
+    }
     return toIssueDetailDto(full, project!.key, userId);
   }
 
@@ -344,6 +401,17 @@ export class IssuesService {
       where: { id: existing.projectId },
       select: { key: true },
     });
+
+    // Re-validate hierarchy when the type or parent changes.
+    const effectiveType = dto.type ?? existing.type;
+    const effectiveParent =
+      dto.parentId !== undefined ? dto.parentId : existing.parentId;
+    if (effectiveParent === existing.id) {
+      throw new BadRequestException('An issue cannot be its own parent.');
+    }
+    // ponytail: checks the child against its parent only; re-typing a parent
+    // below its existing children isn't re-validated. Add that if it bites.
+    await this.assertValidParent(effectiveParent, effectiveType);
 
     const data: Prisma.IssueUpdateInput = {};
     const activities: Prisma.ActivityLogCreateManyInput[] = [];
@@ -440,6 +508,14 @@ export class IssuesService {
           oldTeam?.name ?? null,
           newTeam?.name ?? null,
         ),
+      );
+    }
+
+    // --- Fix versions (m2m) ---
+    if (dto.fixVersionIds !== undefined) {
+      data.versions = { set: dto.fixVersionIds.map((id) => ({ id })) };
+      activities.push(
+        this.activity(existing.id, userId, 'fixVersions', null, null),
       );
     }
 
@@ -658,6 +734,7 @@ export class IssuesService {
       projectKey: project!.key,
       issue: toIssueSummaryDto(full),
     });
+    this.events.notifyUsers(notifications.map((n) => n.recipientId));
     return toIssueDetailDto(full, project!.key, userId);
   }
 
@@ -757,6 +834,7 @@ export class IssuesService {
       projectKey: project!.key,
       issue: toIssueSummaryDto(full),
     });
+    this.events.notifyUsers(notifications.map((n) => n.recipientId));
     return toIssueSummaryDto(full);
   }
 

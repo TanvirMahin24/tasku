@@ -80,4 +80,9 @@ export class UpdateIssueDto implements IUpdateIssueDto {
   @ValidateIf((o) => o.originalEstimate !== null)
   @IsInt()
   originalEstimate?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  fixVersionIds?: string[];
 }

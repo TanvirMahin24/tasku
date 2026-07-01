@@ -41,6 +41,7 @@ export class CommentsService {
     });
 
     const mentionedIds = await this.resolveMentions(dto.body, issue.projectId);
+    const notifiedIds: string[] = [];
 
     const created = await this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
@@ -96,6 +97,7 @@ export class CommentsService {
       }
       if (notifications.length) {
         await tx.notification.createMany({ data: notifications });
+        notifiedIds.push(...notifications.map((n) => n.recipientId));
       }
 
       return comment;
@@ -106,6 +108,7 @@ export class CommentsService {
       projectKey: project!.key,
       issueKey: issue.key,
     });
+    this.events.notifyUsers(notifiedIds);
     return toCommentDto(created);
   }
 

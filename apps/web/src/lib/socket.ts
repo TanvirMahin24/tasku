@@ -39,12 +39,13 @@ export function subscribeToProject(
 ): () => void {
   const s = getSocket(token);
 
-  const join = () => s.emit('project:join', { projectKey });
+  const join = () => s.emit('join', { projectKey });
   if (s.connected) join();
   s.on('connect', join);
 
   const handler = (event: WsEvent) => {
-    if (!event || event.projectKey !== projectKey) return;
+    if (!event || !('projectKey' in event) || event.projectKey !== projectKey)
+      return;
     switch (event.type) {
       case 'issue.created':
       case 'issue.updated':
@@ -83,8 +84,26 @@ export function subscribeToProject(
   s.on('event', handler);
 
   return () => {
-    s.emit('project:leave', { projectKey });
+    s.emit('leave', { projectKey });
     s.off('event', handler);
     s.off('connect', join);
   };
+}
+
+/**
+ * Subscribe to the current user's personal events (delivered to their `user:*`
+ * room by the server) — currently just `notification.created`. Independent of
+ * any project, so the notifications bell stays live everywhere. Returns a
+ * cleanup function.
+ */
+export function subscribeToNotifications(
+  token: string | null,
+  onNotification: () => void,
+): () => void {
+  const s = getSocket(token);
+  const handler = (event: WsEvent) => {
+    if (event?.type === 'notification.created') onNotification();
+  };
+  s.on('event', handler);
+  return () => s.off('event', handler);
 }

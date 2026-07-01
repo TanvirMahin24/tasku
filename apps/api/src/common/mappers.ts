@@ -23,6 +23,12 @@ import type {
   WorklogDto,
   SavedFilterDto,
   IssueFilterCriteria,
+  CustomFieldDefDto,
+  CustomFieldEntryDto,
+  VersionSummaryDto,
+  VersionDto,
+  DeliveryProgress,
+  DeliveryRollupDto,
 } from '@tasku/types';
 
 const iso = (d: Date | string | null | undefined): string =>
@@ -120,7 +126,7 @@ export function toTeamDto(t: any, issueCount?: number): TeamDto {
   };
 }
 
-export function toBoardSummaryDto(b: any): BoardSummaryDto {
+export function toBoardSummaryDto(b: any, isStarred = false): BoardSummaryDto {
   return {
     id: b.id,
     name: b.name,
@@ -128,6 +134,7 @@ export function toBoardSummaryDto(b: any): BoardSummaryDto {
     teamId: b.teamId ?? null,
     isDefault: b.isDefault,
     swimlaneBy: b.swimlaneBy,
+    isStarred,
   };
 }
 
@@ -237,6 +244,75 @@ function resolveLinks(i: any): IssueLinkDto[] {
   return [...out, ...inward];
 }
 
+export function toCustomFieldDefDto(d: any): CustomFieldDefDto {
+  return {
+    id: d.id,
+    name: d.name,
+    type: d.type,
+    options: (d.options as string[] | null) ?? null,
+    required: d.required,
+    order: d.order,
+  };
+}
+
+/**
+ * Every project custom-field def paired with this issue's value (null when
+ * unset). Requires `project.customFields` and `customValues` to be included.
+ */
+function resolveCustomFields(i: any): CustomFieldEntryDto[] {
+  const defs = i.project?.customFields ?? [];
+  const values: any[] = i.customValues ?? [];
+  return defs.map((def: any) => ({
+    field: toCustomFieldDefDto(def),
+    value: values.find((v) => v.fieldId === def.id)?.value ?? null,
+  }));
+}
+
+export function toVersionSummaryDto(v: any): VersionSummaryDto {
+  return {
+    id: v.id,
+    name: v.name,
+    released: v.released,
+    releaseDate: v.releaseDate ? iso(v.releaseDate) : null,
+  };
+}
+
+/** Aggregate a set of issues by status category (delivery progress). */
+export function deliveryFromIssues(issues: any[]): DeliveryProgress {
+  const roll: DeliveryProgress = {
+    total: issues.length,
+    todo: 0,
+    inProgress: 0,
+    done: 0,
+  };
+  for (const iss of issues) {
+    const cat = iss.status?.category;
+    if (cat === 'DONE') roll.done++;
+    else if (cat === 'IN_PROGRESS') roll.inProgress++;
+    else roll.todo++;
+  }
+  return roll;
+}
+
+export function toVersionDto(v: any): VersionDto {
+  return {
+    ...toVersionSummaryDto(v),
+    description: v.description ?? null,
+    startDate: v.startDate ? iso(v.startDate) : null,
+    progress: deliveryFromIssues(v.issues ?? []),
+  };
+}
+
+/** Delivery rollup for an issue: aggregate its delivery-linked issues. */
+function resolveDelivery(i: any): DeliveryRollupDto | null {
+  const isDelivery = (t: string) => t === 'DELIVERS' || t === 'DELIVERED_BY';
+  const linked: any[] = [];
+  for (const l of i.outLinks ?? []) if (isDelivery(l.type)) linked.push(l.target);
+  for (const l of i.inLinks ?? []) if (isDelivery(l.type)) linked.push(l.source);
+  if (!linked.length) return null;
+  return deliveryFromIssues(linked);
+}
+
 export function toIssueDetailDto(
   i: any,
   projectKey: string,
@@ -266,6 +342,9 @@ export function toIssueDetailDto(
     worklogs,
     timeSpent,
     originalEstimate: i.originalEstimate ?? null,
+    customFields: resolveCustomFields(i),
+    versions: (i.versions ?? []).map(toVersionSummaryDto),
+    delivery: resolveDelivery(i),
     projectKey,
     createdAt: iso(i.createdAt),
     updatedAt: iso(i.updatedAt),

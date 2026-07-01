@@ -3,10 +3,16 @@
 
 export type Role = 'ADMIN' | 'MEMBER' | 'VIEWER';
 export type StatusCategory = 'TODO' | 'IN_PROGRESS' | 'DONE';
-export type IssueType = 'EPIC' | 'STORY' | 'TASK' | 'BUG' | 'SUBTASK';
+export type IssueType = 'IDEA' | 'EPIC' | 'STORY' | 'TASK' | 'BUG' | 'SUBTASK';
 export type Priority = 'LOWEST' | 'LOW' | 'MEDIUM' | 'HIGH' | 'HIGHEST';
 export type SprintState = 'FUTURE' | 'ACTIVE' | 'CLOSED';
-export type LinkType = 'BLOCKS' | 'IS_BLOCKED_BY' | 'RELATES_TO' | 'DUPLICATES';
+export type LinkType =
+  | 'BLOCKS'
+  | 'IS_BLOCKED_BY'
+  | 'RELATES_TO'
+  | 'DUPLICATES'
+  | 'DELIVERS'
+  | 'DELIVERED_BY';
 export type TeamRole = 'LEAD' | 'MEMBER';
 export type BoardType = 'KANBAN' | 'SCRUM';
 export type BoardSwimlane = 'NONE' | 'ASSIGNEE' | 'EPIC' | 'TEAM' | 'PRIORITY';
@@ -18,12 +24,24 @@ export type NotificationType =
   | 'STATUS_CHANGED';
 
 export const ISSUE_TYPES: IssueType[] = [
+  'IDEA',
   'EPIC',
   'STORY',
   'TASK',
   'BUG',
   'SUBTASK',
 ];
+
+// Issue hierarchy rank — lower index = higher in the tree. A parent must rank
+// strictly above its child. Idea > Epic > Story/Task/Bug > Subtask.
+export const ISSUE_TYPE_RANK: Record<IssueType, number> = {
+  IDEA: 0,
+  EPIC: 1,
+  STORY: 2,
+  TASK: 2,
+  BUG: 2,
+  SUBTASK: 3,
+};
 export const PRIORITIES: Priority[] = [
   'LOWEST',
   'LOW',
@@ -143,6 +161,136 @@ export interface WorklogDto {
   createdAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Custom fields
+// ---------------------------------------------------------------------------
+
+export type CustomFieldType =
+  | 'TEXT'
+  | 'TEXTAREA'
+  | 'NUMBER'
+  | 'DATE'
+  | 'CHECKBOX'
+  | 'SELECT'
+  | 'MULTI_SELECT'
+  | 'USER'
+  | 'URL';
+
+export const CUSTOM_FIELD_TYPES: CustomFieldType[] = [
+  'TEXT',
+  'TEXTAREA',
+  'NUMBER',
+  'DATE',
+  'CHECKBOX',
+  'SELECT',
+  'MULTI_SELECT',
+  'USER',
+  'URL',
+];
+
+export interface CustomFieldDefDto {
+  id: string;
+  name: string;
+  type: CustomFieldType;
+  options: string[] | null; // choices for SELECT / MULTI_SELECT
+  required: boolean;
+  order: number;
+}
+
+// value shape depends on type:
+//  TEXT/TEXTAREA/URL -> string, NUMBER -> number, CHECKBOX -> boolean,
+//  DATE -> ISO string, SELECT/USER -> string, MULTI_SELECT -> string[].
+export type CustomFieldValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | null;
+
+export interface CustomFieldEntryDto {
+  field: CustomFieldDefDto;
+  value: CustomFieldValue;
+}
+
+export interface CreateCustomFieldDto {
+  name: string;
+  type: CustomFieldType;
+  options?: string[];
+  required?: boolean;
+}
+
+export interface UpdateCustomFieldDto {
+  name?: string;
+  options?: string[];
+  required?: boolean;
+  order?: number;
+}
+
+export interface SetCustomFieldValueDto {
+  value: CustomFieldValue;
+}
+
+// ---------------------------------------------------------------------------
+// Versions / releases + delivery rollup
+// ---------------------------------------------------------------------------
+
+export interface DeliveryProgress {
+  total: number;
+  todo: number;
+  inProgress: number;
+  done: number;
+}
+
+export interface VersionSummaryDto {
+  id: string;
+  name: string;
+  released: boolean;
+  releaseDate: string | null;
+}
+
+export interface VersionDto extends VersionSummaryDto {
+  description: string | null;
+  startDate: string | null;
+  progress: DeliveryProgress;
+}
+
+export interface CreateVersionDto {
+  name: string;
+  description?: string;
+  startDate?: string | null;
+  releaseDate?: string | null;
+}
+
+export interface UpdateVersionDto {
+  name?: string;
+  description?: string | null;
+  released?: boolean;
+  startDate?: string | null;
+  releaseDate?: string | null;
+}
+
+// Delivery rollup for an Idea: aggregate status of its linked delivery issues.
+export type DeliveryRollupDto = DeliveryProgress;
+
+// ---------------------------------------------------------------------------
+// Dashboard ("For you") — personal, cross-project home
+// ---------------------------------------------------------------------------
+
+export interface DashboardBoardDto {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  projectKey: string;
+  projectName: string;
+}
+
+export interface DashboardDto {
+  assignedToMe: IssueSummaryDto[];
+  recentlyUpdated: IssueSummaryDto[];
+  starredBoards: DashboardBoardDto[];
+  projects: ProjectDto[];
+}
+
 export interface IssueDetailDto extends IssueSummaryDto {
   description: string | null;
   reporter: UserDto;
@@ -158,6 +306,9 @@ export interface IssueDetailDto extends IssueSummaryDto {
   worklogs: WorklogDto[];
   originalEstimate: number | null; // minutes
   timeSpent: number; // minutes (sum of worklogs)
+  customFields: CustomFieldEntryDto[];
+  versions: VersionSummaryDto[];
+  delivery: DeliveryRollupDto | null; // set when the issue has delivery links
   projectKey: string;
   createdAt: string;
   updatedAt: string;
@@ -193,6 +344,7 @@ export interface BoardSummaryDto {
   teamId: string | null;
   isDefault: boolean;
   swimlaneBy: BoardSwimlane;
+  isStarred: boolean;
 }
 
 export interface BoardFilter {
@@ -323,6 +475,7 @@ export interface UpdateIssueDto {
   startDate?: string | null;
   dueDate?: string | null;
   originalEstimate?: number | null;
+  fixVersionIds?: string[];
 }
 
 export interface CreateSubtaskDto {
@@ -541,4 +694,6 @@ export type WsEvent =
   | { type: 'issue.updated'; projectKey: string; issue: IssueSummaryDto }
   | { type: 'issue.moved'; projectKey: string; issue: IssueSummaryDto }
   | { type: 'comment.created'; projectKey: string; issueKey: string }
-  | { type: 'sprint.started'; projectKey: string; sprintId: string };
+  | { type: 'sprint.started'; projectKey: string; sprintId: string }
+  // pushed to a single user's room (not a project room)
+  | { type: 'notification.created' };

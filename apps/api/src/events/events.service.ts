@@ -14,6 +14,24 @@ export class EventsService {
   emit(projectKey: string, event: WsEvent): void {
     const server = this.gateway.server;
     if (!server) return; // gateway not yet initialized (e.g. during tests)
-    server.to(this.gateway.room(projectKey)).emit(event.type, event);
+    // Single 'event' channel; the client switches on `event.type`.
+    server.to(this.gateway.room(projectKey)).emit('event', event);
+  }
+
+  /** Push a typed event to one user's personal room. */
+  emitToUser(userId: string, event: WsEvent): void {
+    const server = this.gateway.server;
+    if (!server) return;
+    server.to(this.gateway.userRoom(userId)).emit('event', event);
+  }
+
+  /** Ping each (deduped) recipient that they have a new notification. */
+  notifyUsers(userIds: Iterable<string | null | undefined>): void {
+    const seen = new Set<string>();
+    for (const id of userIds) {
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      this.emitToUser(id, { type: 'notification.created' });
+    }
   }
 }

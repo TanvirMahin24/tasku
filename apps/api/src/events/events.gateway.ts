@@ -8,6 +8,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 
 const WEB_ORIGIN = process.env.WEB_ORIGIN || 'http://localhost:5173';
@@ -28,7 +29,26 @@ export class EventsGateway
 
   private readonly logger = new Logger(EventsGateway.name);
 
+  constructor(private readonly jwt: JwtService) {}
+
+  /**
+   * On connect, verify the JWT passed in the socket handshake auth and join the
+   * user's personal room (`user:<id>`) so we can push their notifications live.
+   * An unauthenticated socket simply gets no user room.
+   */
   handleConnection(client: Socket): void {
+    const token = client.handshake.auth?.token as string | undefined;
+    if (token) {
+      try {
+        const payload = this.jwt.verify<{ sub: string }>(token);
+        if (payload?.sub) {
+          client.data.userId = payload.sub;
+          client.join(this.userRoom(payload.sub));
+        }
+      } catch {
+        // invalid/expired token -> no user room, still allowed to connect
+      }
+    }
     this.logger.debug(`Client connected: ${client.id}`);
   }
 
@@ -66,5 +86,9 @@ export class EventsGateway
 
   room(projectKey: string): string {
     return `project:${projectKey}`;
+  }
+
+  userRoom(userId: string): string {
+    return `user:${userId}`;
   }
 }
