@@ -54,16 +54,27 @@ export const PRIORITIES: Priority[] = [
 // Entities (API response shapes)
 // ---------------------------------------------------------------------------
 
+export type PlatformRole = 'SUPER_ADMIN' | 'MEMBER';
+
 export interface UserDto {
   id: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  // Present on the authenticated user (/auth/me) and admin listings; omitted
+  // on lightweight embedded user references.
+  platformRole?: PlatformRole;
+  banned?: boolean;
 }
 
 export interface AuthResponse {
   accessToken: string;
   user: UserDto;
+}
+
+/** Which third-party sign-in providers the server has configured. */
+export interface AuthProvidersDto {
+  google: boolean;
 }
 
 export interface ProjectDto {
@@ -589,6 +600,21 @@ export interface IssueListQuery {
 // Search & saved filters
 // ---------------------------------------------------------------------------
 
+/** A filter condition on a custom field value. */
+export type CustomFieldOp =
+  | 'eq' // equals (text/number/date/select/user/checkbox)
+  | 'contains' // substring (text) or includes (multi-select)
+  | 'gt' // greater than (number/date)
+  | 'lt' // less than (number/date)
+  | 'set' // has any value
+  | 'notset'; // is empty
+
+export interface CustomFieldCondition {
+  fieldId: string;
+  op: CustomFieldOp;
+  value?: string | number | boolean | string[] | null;
+}
+
 export interface IssueFilterCriteria {
   text?: string;
   projectKey?: string;
@@ -599,6 +625,8 @@ export interface IssueFilterCriteria {
   priorities?: Priority[];
   teamIds?: string[];
   labelIds?: string[];
+  /** Conditions on custom field values (AND-combined). */
+  customFields?: CustomFieldCondition[];
 }
 
 export interface SearchResultDto {
@@ -785,6 +813,31 @@ export interface ImportableKnowledgeDocDto {
   ownerLabel: string; // team name / issue key
 }
 
+/** Who owns a knowledge doc — a team or an issue. */
+export interface KnowledgeOwnerRef {
+  kind: 'team' | 'issue';
+  id: string; // team id / issue key
+  label: string; // team name / issue key
+  color?: string | null; // team color (when kind === 'team')
+}
+
+/** A row in the global Knowledge Base page (all docs a user can access). */
+export interface KnowledgeListItemDto extends KnowledgeDocDto {
+  owner: KnowledgeOwnerRef;
+  ingestStatus: KnowledgeIngestStatus | null;
+  chunkCount: number;
+}
+
+/** Query params for the global Knowledge Base list. */
+export interface KnowledgeListQuery {
+  q?: string;
+  type?: KnowledgeType;
+  linkKind?: KnowledgeLinkKind;
+  ownerKind?: 'team' | 'issue';
+  teamId?: string;
+  ingestStatus?: KnowledgeIngestStatus;
+}
+
 // ---------------------------------------------------------------------------
 // Views — saved, filtered cross-space issue tables with configurable columns
 // ---------------------------------------------------------------------------
@@ -905,4 +958,209 @@ export const VIEW_DEFAULT_COLUMNS: ViewColumn[] = [
 export interface UpdateLabelDto {
   name?: string;
   color?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Majhi — AI assistant (providers, chat, RAG, Google knowledge)
+// ---------------------------------------------------------------------------
+
+export type AiProvider = 'ollama' | 'gemini';
+
+/** Reported to the web app so it can gate the Majhi UI on availability. */
+export interface AiStatusDto {
+  enabled: boolean; // at least one provider configured
+  provider: AiProvider | null; // active provider
+  chatModel: string | null;
+  embedModel: string | null;
+  providers: { ollama: boolean; gemini: boolean };
+  googleConnected: boolean;
+}
+
+export type ChatContextType =
+  | 'global'
+  | 'project'
+  | 'board'
+  | 'view'
+  | 'issue'
+  | 'release'
+  | 'team'
+  | 'dashboard';
+
+/** Where the user asked Majhi from — grounds the answer in that context. */
+export interface ChatContext {
+  type: ChatContextType;
+  id?: string | null; // board id / view id / issue key / release id / team id
+  projectKey?: string | null;
+}
+
+export type ChatRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
+
+export type ChatReferenceKind =
+  | 'issue'
+  | 'knowledge'
+  | 'view'
+  | 'release'
+  | 'team'
+  | 'board';
+
+/** A citation Majhi attaches to an answer — rendered as a rich chip/link. */
+export interface ChatReference {
+  kind: ChatReferenceKind;
+  id: string;
+  key?: string | null; // e.g. issue key TASK-12
+  title: string;
+  url?: string | null; // in-app route or external (Google doc) link
+  status?: string | null;
+  meta?: Record<string, string | number | null> | null;
+}
+
+export interface ToolCallTrace {
+  name: string;
+  ok: boolean;
+  summary?: string;
+}
+
+export interface ChatMessageDto {
+  id: string;
+  role: ChatRole;
+  content: string;
+  references: ChatReference[];
+  toolCalls?: ToolCallTrace[];
+  createdAt: string;
+}
+
+export interface ChatSessionSummaryDto {
+  id: string;
+  title: string;
+  contextType: string | null;
+  contextId: string | null;
+  updatedAt: string;
+}
+
+export interface ChatSessionDto extends ChatSessionSummaryDto {
+  messages: ChatMessageDto[];
+}
+
+export interface SendChatDto {
+  message: string;
+  context?: ChatContext;
+  sessionId?: string | null;
+}
+
+export interface ChatResponseDto {
+  sessionId: string;
+  message: ChatMessageDto;
+}
+
+// --- Google knowledge integration ---
+
+export interface GoogleStatusDto {
+  connected: boolean;
+  email: string | null;
+  authUrl: string | null; // OAuth consent URL (null when not configured)
+}
+
+export type KnowledgeIngestStatus =
+  | 'PENDING'
+  | 'READY'
+  | 'ERROR'
+  | 'UNSUPPORTED';
+
+/** RAG ingestion status for a knowledge doc, surfaced in the KB UI. */
+export interface KnowledgeIngestDto {
+  id: string;
+  title: string;
+  ingestStatus: KnowledgeIngestStatus;
+  ingestError: string | null;
+  chunkCount: number;
+  ingestedAt: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Platform administration — super-admin role, feature flags, bans
+// ---------------------------------------------------------------------------
+
+export type FeatureScope = 'GLOBAL' | 'TEAM' | 'USER';
+
+/** Toggleable feature keys. Default state is enabled; overrides can disable. */
+export type FeatureKey =
+  | 'board'
+  | 'backlog'
+  | 'list'
+  | 'timeline'
+  | 'calendar'
+  | 'reports'
+  | 'releases'
+  | 'views'
+  | 'teams'
+  | 'knowledge'
+  | 'assistant'
+  | 'dashboard'
+  | 'timeTracking'
+  | 'customFields';
+
+export interface FeatureDef {
+  key: FeatureKey;
+  label: string;
+  description: string;
+}
+
+export const FEATURES: FeatureDef[] = [
+  { key: 'board', label: 'Board', description: 'Kanban board' },
+  { key: 'backlog', label: 'Backlog', description: 'Sprint backlog' },
+  { key: 'list', label: 'List view', description: 'Tabular issue list' },
+  { key: 'timeline', label: 'Timeline', description: 'Roadmap / Gantt' },
+  { key: 'calendar', label: 'Calendar', description: 'Calendar view' },
+  { key: 'reports', label: 'Reports', description: 'Charts & analytics' },
+  { key: 'releases', label: 'Releases', description: 'Versions & delivery' },
+  { key: 'views', label: 'Views', description: 'Saved cross-space views' },
+  { key: 'teams', label: 'Teams', description: 'Team management' },
+  { key: 'knowledge', label: 'Knowledge base', description: 'Docs & files' },
+  { key: 'assistant', label: 'Majhi assistant', description: 'AI assistant' },
+  { key: 'dashboard', label: 'Dashboard', description: 'Personal home' },
+  { key: 'timeTracking', label: 'Time tracking', description: 'Worklogs & estimates' },
+  { key: 'customFields', label: 'Custom fields', description: 'Custom issue fields' },
+];
+
+/** Effective feature map for the current user (GET /me/features). */
+export type FeatureMap = Record<FeatureKey, boolean>;
+
+export interface FeatureOverrideDto {
+  id: string;
+  feature: FeatureKey;
+  scope: FeatureScope;
+  teamId: string | null;
+  userId: string | null;
+  enabled: boolean;
+  team?: TeamSummaryDto | null;
+  user?: UserDto | null;
+}
+
+export interface SetFeatureOverrideDto {
+  feature: FeatureKey;
+  scope: FeatureScope;
+  teamId?: string | null;
+  userId?: string | null;
+  enabled: boolean;
+}
+
+/** A user row in the admin console. */
+export interface AdminUserDto {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  platformRole: PlatformRole;
+  banned: boolean;
+  banReason: string | null;
+  teams: TeamSummaryDto[];
+  createdAt: string;
+}
+
+export interface UpdatePlatformRoleDto {
+  platformRole: PlatformRole;
+}
+
+export interface BanUserDto {
+  reason?: string;
 }

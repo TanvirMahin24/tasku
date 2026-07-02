@@ -11,6 +11,7 @@ import type {
 } from '@tasku/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { toIssueSummaryDto, toSavedFilterDto } from '../common/mappers';
+import { buildCustomFieldWhere } from '../common/custom-field-filter';
 import { SaveFilterDto, UpdateSavedFilterDto } from './dto/save-filter.dto';
 
 const SUMMARY_INCLUDE = {
@@ -95,6 +96,20 @@ export class SearchService {
     const labelIds = asArray(criteria.labelIds);
     if (labelIds?.length) {
       where.labels = { some: { labelId: { in: labelIds } } };
+    }
+
+    // Custom-field conditions intersect via issue-id sets AND-ed into `where`.
+    const cfClauses = await buildCustomFieldWhere(
+      this.prisma,
+      criteria.customFields,
+    );
+    if (cfClauses.length) {
+      const existing = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+      where.AND = [...existing, ...cfClauses];
     }
 
     const [issues, total] = await Promise.all([

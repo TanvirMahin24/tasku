@@ -1,23 +1,26 @@
 import { Link, Navigate, NavLink, Outlet, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
+import type { FeatureKey } from '@tasku/types';
 import { projectsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
+import { useFeatures } from '@/hooks/useFeatures';
 import { spaceColor } from '@/components/AppLayout';
 
 // Per-space top navigation — mirrors the reference design: breadcrumb,
 // space icon + name, then an underline tab strip. Wraps every /projects/:key
-// route so the chrome is defined once.
-const TABS: { to: string; label: string }[] = [
+// route so the chrome is defined once. Tabs with a `feature` are hidden when
+// that feature is disabled for the current user.
+const TABS: { to: string; label: string; feature?: FeatureKey }[] = [
   { to: 'overview', label: 'Overview' },
-  { to: 'board', label: 'Board' },
-  { to: 'backlog', label: 'Backlog' },
-  { to: 'list', label: 'List' },
-  { to: 'timeline', label: 'Timeline' },
-  { to: 'calendar', label: 'Calendar' },
-  { to: 'report', label: 'Sprint report' },
-  { to: 'reports', label: 'Reports' },
-  { to: 'releases', label: 'Releases' },
+  { to: 'board', label: 'Board', feature: 'board' },
+  { to: 'backlog', label: 'Backlog', feature: 'backlog' },
+  { to: 'list', label: 'List', feature: 'list' },
+  { to: 'timeline', label: 'Timeline', feature: 'timeline' },
+  { to: 'calendar', label: 'Calendar', feature: 'calendar' },
+  { to: 'report', label: 'Sprint report', feature: 'reports' },
+  { to: 'reports', label: 'Reports', feature: 'reports' },
+  { to: 'releases', label: 'Releases', feature: 'releases' },
   { to: 'settings', label: 'Settings' },
 ];
 
@@ -31,6 +34,12 @@ export function SpaceLayout() {
   const project = projects.find((p) => p.key === key) ?? null;
   const name = project?.name ?? key;
   const color = spaceColor(key);
+
+  // Gate tabs on feature availability (defaults to enabled while loading).
+  const { data: features } = useFeatures();
+  const visibleTabs = TABS.filter(
+    (t) => !t.feature || features?.[t.feature] !== false,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-page dark:bg-gray-950">
@@ -56,7 +65,7 @@ export function SpaceLayout() {
         </div>
 
         <nav className="mt-3 flex gap-[22px] overflow-x-auto scrollbar-thin">
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <NavLink
               key={t.to}
               to={`/projects/${key}/${t.to}`}

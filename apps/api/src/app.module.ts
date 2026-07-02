@@ -28,6 +28,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { MentionsModule } from './mentions/mentions.module';
 import { ViewsModule } from './views/views.module';
+import { AiModule } from './ai/ai.module';
+import { FeaturesModule } from './features/features.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -60,6 +63,9 @@ import { ViewsModule } from './views/views.module';
     KnowledgeModule,
     MentionsModule,
     ViewsModule,
+    AiModule,
+    FeaturesModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

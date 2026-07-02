@@ -3,11 +3,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Pin, Plus, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 import type {
+  CustomFieldCondition,
+  CustomFieldDefDto,
+  CustomFieldOp,
+  CustomFieldType,
   IssueFilterCriteria,
   IssueType,
   Priority,
   StatusCategory,
   UpdateViewDto,
+  UserDto,
   ViewColumn,
   ViewDto,
   ViewFieldDto,
@@ -19,6 +24,7 @@ import {
 } from '@tasku/types';
 import {
   apiErrorMessage,
+  customFieldsApi,
   projectsApi,
   teamsApi,
   usersApi,
@@ -57,6 +63,59 @@ const FILTER_FIELDS: { field: FilterField; label: string }[] = [
   { field: 'teamIds', label: 'Team' },
   { field: 'assigneeIds', label: 'Assignee' },
 ];
+
+// --- Custom-field conditions ---------------------------------------------
+
+const CF_OP_LABELS: Record<CustomFieldOp, string> = {
+  eq: 'equals',
+  contains: 'contains',
+  gt: 'greater than',
+  lt: 'less than',
+  set: 'is set',
+  notset: 'is empty',
+};
+
+/** Sensible operators per field type. */
+function opsForType(t: CustomFieldType): CustomFieldOp[] {
+  switch (t) {
+    case 'SELECT':
+    case 'USER':
+    case 'CHECKBOX':
+      return ['eq', 'set', 'notset'];
+    case 'TEXT':
+    case 'TEXTAREA':
+    case 'URL':
+      return ['contains', 'eq', 'set', 'notset'];
+    case 'NUMBER':
+    case 'DATE':
+      return ['eq', 'gt', 'lt', 'set', 'notset'];
+    case 'MULTI_SELECT':
+      return ['contains', 'set', 'notset'];
+  }
+}
+
+function opNeedsValue(op: CustomFieldOp): boolean {
+  return op !== 'set' && op !== 'notset';
+}
+
+function defaultValueFor(
+  t: CustomFieldType,
+  op: CustomFieldOp,
+  field: CustomFieldDefDto,
+): CustomFieldCondition['value'] {
+  if (!opNeedsValue(op)) return undefined;
+  switch (t) {
+    case 'CHECKBOX':
+      return true;
+    case 'NUMBER':
+      return 0;
+    case 'SELECT':
+    case 'MULTI_SELECT':
+      return field.options?.[0] ?? '';
+    default:
+      return '';
+  }
+}
 
 function hasValue(v: unknown): boolean {
   return Array.isArray(v) ? v.length > 0 : v != null && v !== '';
@@ -99,6 +158,15 @@ export function ViewEditor({
     queryFn: projectsApi.list,
   });
 
+  // Custom fields are per-project, so we can only offer them once a Space is
+  // chosen in the filter (criteria.projectKey).
+  const cfProjectKey = criteria.projectKey ?? '';
+  const { data: customFieldDefs = [] } = useQuery({
+    queryKey: qk.customFields(cfProjectKey),
+    queryFn: () => customFieldsApi.list(cfProjectKey),
+    enabled: !!cfProjectKey,
+  });
+
   const fieldLabel = useMemo(() => {
     const m = new Map<string, string>();
     VIEW_STANDARD_FIELDS.forEach((f) => m.set(f.key, f.label));
@@ -129,6 +197,10 @@ export function ViewEditor({
     const set = new Set(arr ?? []);
     set.has(v) ? set.delete(v) : set.add(v);
     return [...set];
+  }
+  const customConds = criteria.customFields ?? [];
+  function setCustomConds(conds: CustomFieldCondition[]) {
+    setCrit('customFields', conds.length ? conds : undefined);
   }
   function moveCol(i: number, dir: -1 | 1) {
     const j = i + dir;
@@ -363,6 +435,15 @@ export function ViewEditor({
                 </div>
               </div>
             )}
+
+            {/* Custom-field conditions */}
+            <CustomFieldFilter
+              projectKey={criteria.projectKey}
+              defs={customFieldDefs}
+              users={users}
+              conditions={customConds}
+              onChange={setCustomConds}
+            />
           </div>
         </Section>
 
@@ -549,4 +630,240 @@ function IconBtn({
       {children}
     </button>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Custom-field filter builder
+// ---------------------------------------------------------------------------
+
+function CustomFieldFilter({
+  projectKey,
+  defs,
+  users,
+  conditions,
+  onChange,
+}: {
+  projectKey?: string;
+  defs: CustomFieldDefDto[];
+  users: UserDto[];
+  conditions: CustomFieldCondition[];
+  onChange: (conds: CustomFieldCondition[]) => void;
+}) {
+  const defById = useMemo(
+    () => new Map(defs.map((d) => [d.id, d] as const)),
+    [defs],
+  );
+
+  function addField(fieldId: string) {
+    const def = defById.get(fieldId);
+    if (!def) return;
+    const op = opsForType(def.type)[0];
+    onChange([
+      ...conditions,
+      { fieldId, op, value: defaultValueFor(def.type, op, def) },
+    ]);
+  }
+  function updateAt(i: number, next: CustomFieldCondition) {
+    onChange(conditions.map((c, idx) => (idx === i ? next : c)));
+  }
+  function removeAt(i: number) {
+    onChange(conditions.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-line-soft pt-3 dark:border-gray-800">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted dark:text-gray-400">
+        Custom fields
+      </p>
+
+      {!projectKey ? (
+        <p className="text-xs text-ink-faint">
+          Add a <span className="font-medium">Space</span> condition above to
+          filter by that project's custom fields.
+        </p>
+      ) : (
+        <>
+          {conditions.map((cond, i) => (
+            <CustomFieldConditionRow
+              key={i}
+              cond={cond}
+              def={defById.get(cond.fieldId) ?? null}
+              users={users}
+              onChange={(next) => updateAt(i, next)}
+              onRemove={() => removeAt(i)}
+            />
+          ))}
+
+          {defs.length === 0 ? (
+            <p className="text-xs text-ink-faint">
+              This space has no custom fields.
+            </p>
+          ) : (
+            <div className="max-w-[220px] pt-1">
+              <Select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addField(e.target.value);
+                }}
+                placeholder="+ Add custom field…"
+                options={defs.map((d) => ({ value: d.id, label: d.name }))}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CustomFieldConditionRow({
+  cond,
+  def,
+  users,
+  onChange,
+  onRemove,
+}: {
+  cond: CustomFieldCondition;
+  def: CustomFieldDefDto | null;
+  users: UserDto[];
+  onChange: (next: CustomFieldCondition) => void;
+  onRemove: () => void;
+}) {
+  // Field was deleted or belongs to another project — offer removal only.
+  if (!def) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-dashed border-line bg-white p-2 text-xs text-ink-faint dark:border-gray-700 dark:bg-gray-900">
+        <span className="flex-1">Unknown field ({cond.fieldId})</span>
+        <button
+          onClick={onRemove}
+          title="Remove condition"
+          className="text-ink-faint hover:text-red-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  const ops = opsForType(def.type);
+  const showValue = opNeedsValue(cond.op);
+
+  function setOp(op: CustomFieldOp) {
+    onChange({
+      ...cond,
+      op,
+      value: opNeedsValue(op) ? defaultValueFor(def!.type, op, def!) : undefined,
+    });
+  }
+  function setValue(value: CustomFieldCondition['value']) {
+    onChange({ ...cond, value });
+  }
+
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-line bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+      <span className="mt-1.5 w-16 shrink-0 truncate text-xs font-medium text-ink-soft dark:text-gray-300">
+        {def.name}
+      </span>
+      <div className="w-28 shrink-0">
+        <Select
+          value={cond.op}
+          onChange={(e) => setOp(e.target.value as CustomFieldOp)}
+          options={ops.map((o) => ({ value: o, label: CF_OP_LABELS[o] }))}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        {showValue && (
+          <CustomFieldValueInput
+            def={def}
+            users={users}
+            value={cond.value}
+            onChange={setValue}
+          />
+        )}
+      </div>
+      <button
+        onClick={onRemove}
+        title="Remove condition"
+        className="mt-1 shrink-0 text-ink-faint hover:text-red-600"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function CustomFieldValueInput({
+  def,
+  users,
+  value,
+  onChange,
+}: {
+  def: CustomFieldDefDto;
+  users: UserDto[];
+  value: CustomFieldCondition['value'];
+  onChange: (value: CustomFieldCondition['value']) => void;
+}) {
+  const str = typeof value === 'string' ? value : '';
+
+  switch (def.type) {
+    case 'SELECT':
+    case 'MULTI_SELECT':
+      return (
+        <Select
+          value={str}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Select a value…"
+          options={(def.options ?? []).map((o) => ({ value: o, label: o }))}
+        />
+      );
+    case 'USER':
+      return (
+        <Select
+          value={str}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Select a user…"
+          options={users.map((u) => ({ value: u.id, label: u.displayName }))}
+        />
+      );
+    case 'CHECKBOX':
+      return (
+        <Select
+          value={value === false ? 'false' : 'true'}
+          onChange={(e) => onChange(e.target.value === 'true')}
+          options={[
+            { value: 'true', label: 'Checked' },
+            { value: 'false', label: 'Unchecked' },
+          ]}
+        />
+      );
+    case 'NUMBER':
+      return (
+        <input
+          type="number"
+          value={typeof value === 'number' ? value : ''}
+          onChange={(e) =>
+            onChange(e.target.value === '' ? '' : Number(e.target.value))
+          }
+          className={inputClass}
+        />
+      );
+    case 'DATE':
+      return (
+        <input
+          type="date"
+          value={str.slice(0, 10)}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClass}
+        />
+      );
+    default:
+      return (
+        <input
+          value={str}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Value…"
+          className={inputClass}
+        />
+      );
+  }
 }

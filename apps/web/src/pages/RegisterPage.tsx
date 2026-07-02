@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { AuthShell, Field } from './LoginPage';
 
 export default function RegisterPage() {
@@ -77,6 +78,7 @@ export default function RegisterPage() {
           Create account
         </Button>
       </form>
+      <GoogleSignInButton label="Sign up with Google" />
       <p className="mt-6 text-center text-sm text-ink-muted dark:text-gray-400">
         Already have an account?{' '}
         <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">

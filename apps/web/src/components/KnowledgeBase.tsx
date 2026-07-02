@@ -8,6 +8,7 @@ import {
   FileText,
   Link2,
   Presentation,
+  RefreshCw,
   Table2,
   Trash2,
   Upload,
@@ -15,6 +16,7 @@ import {
 import type {
   CreateKnowledgeLinkDto,
   KnowledgeDocDto,
+  KnowledgeIngestDto,
   KnowledgeLinkKind,
   KnowledgeSource,
 } from '@tasku/types';
@@ -23,6 +25,7 @@ import {
   fetchKnowledgeBlobUrl,
   knowledgeApi,
 } from '@/lib/api';
+import { aiApi } from '@/lib/ai';
 import { qk } from '@/lib/queryKeys';
 import { relativeTime } from '@/lib/format';
 import { useDebounced } from '@/hooks/useDebounced';
@@ -30,6 +33,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { inputClass } from '@/components/ui/Select';
+import { IngestBadge } from '@/components/Majhi/IngestBadge';
 
 export type KnowledgeScope =
   | { kind: 'team'; teamId: string }
@@ -68,6 +72,38 @@ export function KnowledgeBase({ scope }: { scope: KnowledgeScope }) {
       scope.kind === 'team'
         ? knowledgeApi.listTeam(scope.teamId)
         : knowledgeApi.listIssue(scope.issueKey),
+  });
+
+  // RAG ingestion status — only relevant when the AI assistant is configured.
+  const { data: aiStatus } = useQuery({
+    queryKey: qk.aiStatus,
+    queryFn: aiApi.status,
+    staleTime: 60_000,
+  });
+  const aiEnabled = !!aiStatus?.enabled;
+
+  const ingestParams =
+    scope.kind === 'team'
+      ? { teamId: scope.teamId }
+      : { issueId: scope.issueKey };
+  const ingestKey =
+    scope.kind === 'team'
+      ? qk.aiIngestStatus(scope.teamId, undefined)
+      : qk.aiIngestStatus(undefined, scope.issueKey);
+
+  const { data: ingest = [] } = useQuery({
+    queryKey: ingestKey,
+    queryFn: () => aiApi.ingestStatus(ingestParams),
+    enabled: aiEnabled && docs.length > 0,
+  });
+  const ingestById = new Map<string, KnowledgeIngestDto>(
+    ingest.map((i) => [i.id, i]),
+  );
+
+  const reingest = useMutation({
+    mutationFn: (docId: string) => aiApi.ingest(docId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ingestKey }),
+    onError: (e) => setError(apiErrorMessage(e, 'Could not re-ingest document')),
   });
 
   const [adding, setAdding] = useState(false);
@@ -167,7 +203,14 @@ export function KnowledgeBase({ scope }: { scope: KnowledgeScope }) {
       ) : (
         <ul className="space-y-1.5">
           {docs.map((d) => (
-            <KnowledgeCard key={d.id} doc={d} onDelete={() => remove.mutate(d.id)} />
+            <KnowledgeCard
+              key={d.id}
+              doc={d}
+              onDelete={() => remove.mutate(d.id)}
+              ingest={aiEnabled ? ingestById.get(d.id) : undefined}
+              onReingest={aiEnabled ? () => reingest.mutate(d.id) : undefined}
+              reingesting={reingest.isPending && reingest.variables === d.id}
+            />
           ))}
         </ul>
       )}
@@ -188,9 +231,15 @@ export function KnowledgeBase({ scope }: { scope: KnowledgeScope }) {
 function KnowledgeCard({
   doc,
   onDelete,
+  ingest,
+  onReingest,
+  reingesting,
 }: {
   doc: KnowledgeDocDto;
   onDelete: () => void;
+  ingest?: KnowledgeIngestDto;
+  onReingest?: () => void;
+  reingesting?: boolean;
 }) {
   const { Icon, color } = visualFor(doc);
 
@@ -236,6 +285,7 @@ function KnowledgeCard({
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-ink-faint">
           <SourceBadge source={doc.source} />
+          {ingest && <IngestBadge ingest={ingest} />}
           <span>{doc.createdBy.displayName}</span>
           <span>· {relativeTime(doc.createdAt)}</span>
           {doc.type === 'FILE' && doc.size != null && (
@@ -243,6 +293,16 @@ function KnowledgeCard({
           )}
         </div>
       </button>
+      {onReingest && (
+        <button
+          onClick={onReingest}
+          disabled={reingesting}
+          title="Re-ingest for AI search"
+          className="shrink-0 text-ink-faint opacity-0 transition-opacity hover:text-brand-600 disabled:opacity-40 group-hover:opacity-100"
+        >
+          <RefreshCw className={reingesting ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+        </button>
+      )}
       {doc.canDelete && (
         <button
           onClick={onDelete}

@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { SpaceLayout, SpaceHome } from '@/components/SpaceLayout';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
+import AuthCallbackPage from '@/pages/AuthCallbackPage';
 import ProjectsPage from '@/pages/ProjectsPage';
 import DashboardPage from '@/pages/DashboardPage';
 import BoardPage from '@/pages/BoardPage';
@@ -22,6 +23,9 @@ import SearchPage from '@/pages/SearchPage';
 import ReportsPage from '@/pages/ReportsPage';
 import ReleasesPage from '@/pages/ReleasesPage';
 import SettingsPage from '@/pages/SettingsPage';
+import AssistantSettingsPage from '@/pages/AssistantSettingsPage';
+import KnowledgeBasePage from '@/pages/KnowledgeBasePage';
+import AdminPage from '@/pages/AdminPage';
 
 export default function App() {
   return (
@@ -29,6 +33,7 @@ export default function App() {
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Authenticated */}
       <Route element={<ProtectedRoute />}>
@@ -40,6 +45,9 @@ export default function App() {
           <Route path="/teams/:id" element={<TeamPage />} />
           <Route path="/views" element={<ViewsPage />} />
           <Route path="/views/:id" element={<ViewPage />} />
+          <Route path="/knowledge" element={<KnowledgeBasePage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/settings/assistant" element={<AssistantSettingsPage />} />
           <Route path="/projects/:key" element={<SpaceLayout />}>
             <Route index element={<SpaceHome />} />
             <Route path="overview" element={<OverviewPage />} />

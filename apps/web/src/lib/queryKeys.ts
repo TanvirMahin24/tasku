@@ -6,6 +6,13 @@ export const qk = {
   me: ['me'] as const,
   users: ['users'] as const,
 
+  // --- Platform admin + feature gating ---
+  adminUsers: ['admin', 'users'] as const,
+  adminFeatures: ['admin', 'features'] as const,
+  myFeatures: ['me', 'features'] as const,
+
+  knowledgeAll: (q?: unknown) => ['knowledge', 'all', q ?? {}] as const,
+
   projects: ['projects'] as const,
   recommendedProjects: ['projects', 'recommended'] as const,
   dashboard: ['dashboard'] as const,
@@ -57,4 +64,14 @@ export const qk = {
   viewResults: (id: string) => ['view', id, 'results'] as const,
   viewActivity: (id: string) => ['view', id, 'activity'] as const,
   viewFields: ['view', 'fields'] as const,
+
+  customFields: (key: string) => ['project', key, 'custom-fields'] as const,
+
+  // --- Majhi / AI assistant ---
+  aiStatus: ['ai', 'status'] as const,
+  aiSessions: ['ai', 'sessions'] as const,
+  aiSession: (id: string) => ['ai', 'session', id] as const,
+  aiGoogleStatus: ['ai', 'google', 'status'] as const,
+  aiIngestStatus: (teamId?: string, issueId?: string) =>
+    ['ai', 'ingest', teamId ?? '', issueId ?? ''] as const,
 };

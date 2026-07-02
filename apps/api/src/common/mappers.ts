@@ -35,12 +35,17 @@ const iso = (d: Date | string | null | undefined): string =>
   d instanceof Date ? d.toISOString() : (d as string);
 
 export function toUserDto(u: any): UserDto {
-  return {
+  const dto: UserDto = {
     id: u.id,
     email: u.email,
     displayName: u.displayName,
     avatarUrl: u.avatarUrl ?? null,
   };
+  // Only surface platform fields when the row selected them, so lightweight
+  // embedded user references stay minimal.
+  if (u.platformRole !== undefined) dto.platformRole = u.platformRole;
+  if ('bannedAt' in u) dto.banned = u.bannedAt != null;
+  return dto;
 }
 
 export function toUserDtoOrNull(u: any): UserDto | null {

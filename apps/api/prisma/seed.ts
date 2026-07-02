@@ -41,11 +41,12 @@ async function main() {
   const [alice, bob, carol] = await Promise.all([
     prisma.user.upsert({
       where: { email: 'alice@tasku.dev' },
-      update: {},
+      update: { platformRole: 'SUPER_ADMIN' },
       create: {
         email: 'alice@tasku.dev',
         passwordHash,
         displayName: 'Alice',
+        platformRole: 'SUPER_ADMIN',
       },
     }),
     prisma.user.upsert({

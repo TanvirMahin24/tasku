@@ -25,6 +25,7 @@ import {
   toUserDto,
   toUserDtoOrNull,
 } from '../common/mappers';
+import { buildCustomFieldWhere } from '../common/custom-field-filter';
 
 const iso = (d: Date | null | undefined): string | null =>
   d ? d.toISOString() : null;
@@ -382,6 +383,20 @@ export class ViewsService {
     }
     if (criteria.labelIds?.length) {
       where.labels = { some: { labelId: { in: criteria.labelIds } } };
+    }
+
+    // Custom-field conditions intersect via issue-id sets AND-ed into `where`.
+    const cfClauses = await buildCustomFieldWhere(
+      this.prisma,
+      criteria.customFields,
+    );
+    if (cfClauses.length) {
+      const existing = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+      where.AND = [...existing, ...cfClauses];
     }
     return where;
   }

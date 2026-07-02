@@ -31,10 +31,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
+    // Banned users are locked out everywhere, even with a valid token.
+    if (user.bannedAt) {
+      throw new UnauthorizedException('This account has been banned');
+    }
     return {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      platformRole: user.platformRole,
     };
   }
 }

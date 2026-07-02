@@ -8,7 +8,15 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { inputClass } from '@/components/ui/Select';
+
+/** Human-readable messages for the ?error= codes the OAuth flow can redirect with. */
+const OAUTH_ERRORS: Record<string, string> = {
+  google_unconfigured: 'Google sign-in is not configured on this server.',
+  google_denied: 'Google sign-in was cancelled.',
+  google_failed: 'Could not sign in with Google. Please try again.',
+};
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
@@ -18,9 +26,13 @@ export default function LoginPage() {
   const from =
     (location.state as { from?: string } | null)?.from ?? '/';
 
+  const oauthError =
+    OAUTH_ERRORS[new URLSearchParams(location.search).get('error') ?? ''] ??
+    null;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(oauthError);
   const [submitting, setSubmitting] = useState(false);
 
   if (token) return <Navigate to={from} replace />;
@@ -69,6 +81,7 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
+      <GoogleSignInButton />
       <p className="mt-6 text-center text-sm text-ink-muted dark:text-gray-400">
         Don&apos;t have an account?{' '}
         <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">

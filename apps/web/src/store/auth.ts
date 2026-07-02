@@ -12,6 +12,8 @@ interface AuthState {
   initialized: boolean;
   login: (dto: LoginDto) => Promise<void>;
   register: (dto: RegisterDto) => Promise<void>;
+  /** Adopt a token minted out-of-band (e.g. the Google OAuth redirect). */
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   setUser: (user: UserDto) => void;
   hydrate: () => Promise<void>;
@@ -51,6 +53,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ token: res.accessToken, user: res.user, initialized: true });
   },
 
+  loginWithToken: async (token) => {
+    writeToken(token);
+    set({ token });
+    const user = await authApi.me();
+    set({ user, initialized: true });
+  },
+
   logout: () => {
     writeToken(null);
     disconnectSocket();
@@ -75,6 +84,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+/** Derived selector: is the authenticated user a platform super-admin? */
+export function useIsSuperAdmin(): boolean {
+  return useAuthStore((s) => s.user?.platformRole === 'SUPER_ADMIN');
+}
 
 // Wire the axios interceptors to the store (token injection + 401 -> logout).
 configureApiAuth({

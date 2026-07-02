@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 import type {
   AddTeamMemberDto,
   AttachmentDto,
+  AuthProvidersDto,
   AuthResponse,
   BoardDto,
   BoardSummaryDto,
@@ -24,6 +25,8 @@ import type {
   CreateVersionDto,
   CustomFieldDefDto,
   KnowledgeDocDto,
+  KnowledgeListItemDto,
+  KnowledgeListQuery,
   ImportableKnowledgeDocDto,
   MentionableDto,
   CustomFieldValue,
@@ -70,7 +73,7 @@ import type {
   UpdateViewDto,
 } from '@tasku/types';
 
-const API_URL =
+export const API_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
 
 export const api: AxiosInstance = axios.create({
@@ -137,6 +140,10 @@ export const authApi = {
   login: (dto: LoginDto) =>
     api.post<AuthResponse>('/auth/login', dto).then((r) => r.data),
   me: () => api.get<UserDto>('/auth/me').then((r) => r.data),
+  providers: () =>
+    api.get<AuthProvidersDto>('/auth/providers').then((r) => r.data),
+  /** Absolute URL to start the Google sign-in redirect flow. */
+  googleAuthUrl: () => `${API_URL}/auth/google`,
 };
 
 // ---------------------------------------------------------------------------
@@ -438,6 +445,11 @@ function knowledgeFileForm(file: File, title?: string): FormData {
 }
 
 export const knowledgeApi = {
+  /** Global list — every doc the user can access, with search + filters. */
+  listAll: (query?: KnowledgeListQuery) =>
+    api
+      .get<KnowledgeListItemDto[]>(`/knowledge`, { params: query })
+      .then((r) => r.data),
   listTeam: (teamId: string) =>
     api.get<KnowledgeDocDto[]>(`/teams/${teamId}/knowledge`).then((r) => r.data),
   listIssue: (issueKey: string) =>
