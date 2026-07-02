@@ -14,10 +14,13 @@ import type {
 } from '@tasku/types';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../../common/current-user.decorator';
+import { RequireFeatureGuard } from '../../features/require-feature.guard';
+import { RequireFeature } from '../../features/require-feature.decorator';
 import { ChatService } from './chat.service';
 import { SendChatDto } from './dto/send-chat.dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RequireFeatureGuard)
+@RequireFeature('assistant')
 @Controller('ai')
 export class ChatController {
   constructor(private readonly chat: ChatService) {}

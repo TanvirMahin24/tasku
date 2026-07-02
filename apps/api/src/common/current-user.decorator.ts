@@ -1,9 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import type { PlatformRole } from '@tasku/types';
 
 export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  platformRole?: PlatformRole;
 }
 
 /**

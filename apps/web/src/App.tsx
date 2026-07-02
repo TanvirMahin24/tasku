@@ -24,6 +24,7 @@ import ReleasesPage from '@/pages/ReleasesPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AssistantSettingsPage from '@/pages/AssistantSettingsPage';
 import KnowledgeBasePage from '@/pages/KnowledgeBasePage';
+import AdminPage from '@/pages/AdminPage';
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/views" element={<ViewsPage />} />
           <Route path="/views/:id" element={<ViewPage />} />
           <Route path="/knowledge" element={<KnowledgeBasePage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/settings/assistant" element={<AssistantSettingsPage />} />
           <Route path="/projects/:key" element={<SpaceLayout />}>
             <Route index element={<SpaceHome />} />

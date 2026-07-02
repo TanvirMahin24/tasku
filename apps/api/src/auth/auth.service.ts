@@ -26,11 +26,14 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    // The very first user to register becomes the platform super admin.
+    const userCount = await this.prisma.user.count();
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
         displayName: dto.displayName,
+        platformRole: userCount === 0 ? 'SUPER_ADMIN' : 'MEMBER',
       },
     });
     return this.buildAuthResponse(user);
@@ -42,6 +45,9 @@ export class AuthService {
     });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    if (user.bannedAt) {
+      throw new UnauthorizedException('This account has been banned');
     }
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) {

@@ -10,6 +10,7 @@ import {
   Moon,
   Plus,
   Search,
+  Shield,
   Sparkles,
   Star,
   Sun,
@@ -20,7 +21,8 @@ import clsx from 'clsx';
 import type { ProjectDto } from '@tasku/types';
 import { projectsApi, viewsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, useIsSuperAdmin } from '@/store/auth';
+import { useFeature } from '@/hooks/useFeatures';
 import { useThemeStore } from '@/store/theme';
 import { Avatar } from '@/components/ui/Avatar';
 import { NotificationsBell } from '@/components/NotificationsBell';
@@ -70,6 +72,12 @@ export function AppLayout() {
   const { key } = useParams<{ key: string }>();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const isSuperAdmin = useIsSuperAdmin();
+  const showDashboard = useFeature('dashboard');
+  const showTeams = useFeature('teams');
+  const showViews = useFeature('views');
+  const showKnowledge = useFeature('knowledge');
+  const showAssistant = useFeature('assistant');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const { starred, toggle } = useStarredSpaces();
@@ -137,24 +145,39 @@ export function AppLayout() {
         <nav className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin">
           {/* Top-level nav */}
           <div className="flex flex-col gap-px">
-            <SidebarLink to="/dashboard" icon={Home}>
-              Your work
-            </SidebarLink>
+            {showDashboard && (
+              <SidebarLink to="/dashboard" icon={Home}>
+                Your work
+              </SidebarLink>
+            )}
             <SidebarLink to="/" icon={LayoutGrid} end>
               Spaces
             </SidebarLink>
-            <SidebarLink to="/teams" icon={Users}>
-              Teams
-            </SidebarLink>
-            <SidebarLink to="/views" icon={Table2} end>
-              Views
-            </SidebarLink>
-            <SidebarLink to="/knowledge" icon={BookOpen}>
-              Knowledge base
-            </SidebarLink>
-            <SidebarLink to="/settings/assistant" icon={Sparkles}>
-              Assistant
-            </SidebarLink>
+            {showTeams && (
+              <SidebarLink to="/teams" icon={Users}>
+                Teams
+              </SidebarLink>
+            )}
+            {showViews && (
+              <SidebarLink to="/views" icon={Table2} end>
+                Views
+              </SidebarLink>
+            )}
+            {showKnowledge && (
+              <SidebarLink to="/knowledge" icon={BookOpen}>
+                Knowledge base
+              </SidebarLink>
+            )}
+            {showAssistant && (
+              <SidebarLink to="/settings/assistant" icon={Sparkles}>
+                Assistant
+              </SidebarLink>
+            )}
+            {isSuperAdmin && (
+              <SidebarLink to="/admin" icon={Shield}>
+                Admin
+              </SidebarLink>
+            )}
             {starredViews.map((v) => (
               <NavLink
                 key={v.id}

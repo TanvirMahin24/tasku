@@ -14,8 +14,11 @@ import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../common/current-user.decorator';
+import { RequireFeatureGuard } from '../features/require-feature.guard';
+import { RequireFeature } from '../features/require-feature.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RequireFeatureGuard)
+@RequireFeature('releases')
 @Controller()
 export class VersionsController {
   constructor(private readonly versions: VersionsService) {}

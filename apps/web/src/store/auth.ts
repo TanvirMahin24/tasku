@@ -76,6 +76,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
+/** Derived selector: is the authenticated user a platform super-admin? */
+export function useIsSuperAdmin(): boolean {
+  return useAuthStore((s) => s.user?.platformRole === 'SUPER_ADMIN');
+}
+
 // Wire the axios interceptors to the store (token injection + 401 -> logout).
 configureApiAuth({
   getToken: () => useAuthStore.getState().token,

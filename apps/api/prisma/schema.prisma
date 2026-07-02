@@ -22,6 +22,9 @@ model User {
   passwordHash String
   displayName  String
   avatarUrl    String?
+  platformRole PlatformRole @default(MEMBER)
+  bannedAt     DateTime?
+  banReason    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -44,12 +47,45 @@ model User {
   viewActivity     ViewActivity[]
   googleConnection GoogleConnection?
   chatSessions     ChatSession[]
+  featureOverrides FeatureOverride[] @relation("UserFeatureOverrides")
 }
 
 enum Role {
   ADMIN
   MEMBER
   VIEWER
+}
+
+// Platform-wide role (distinct from per-project Role). The first registered
+// user is promoted to SUPER_ADMIN automatically.
+enum PlatformRole {
+  SUPER_ADMIN
+  MEMBER
+}
+
+enum FeatureScope {
+  GLOBAL
+  TEAM
+  USER
+}
+
+// A super-admin toggle for a feature, scoped globally / to a team / to a user.
+// Resolution precedence: USER > TEAM > GLOBAL > default (enabled).
+model FeatureOverride {
+  id        String       @id @default(cuid())
+  feature   String
+  scope     FeatureScope
+  teamId    String?
+  userId    String?
+  enabled   Boolean
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation("UserFeatureOverrides", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feature, scope, teamId, userId])
+  @@index([feature])
 }
 
 model ProjectMember {
@@ -367,6 +403,7 @@ model Team {
   knowledgeDocs KnowledgeDoc[]
   viewsScoped     View[] @relation("ViewScopeTeam")
   viewsAssociated View[] @relation("ViewTeams")
+  featureOverrides FeatureOverride[]
 }
 
 model TeamMember {

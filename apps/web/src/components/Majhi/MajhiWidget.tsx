@@ -22,6 +22,7 @@ import { aiApi } from '@/lib/ai';
 import { apiErrorMessage } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { relativeTime } from '@/lib/format';
+import { useFeature } from '@/hooks/useFeatures';
 import { Spinner } from '@/components/ui/Spinner';
 import { MajhiMessage } from './MajhiMessage';
 import { useMajhiContext } from './useMajhiContext';
@@ -49,6 +50,9 @@ export function MajhiWidget() {
     queryFn: aiApi.status,
     staleTime: 60_000,
   });
+
+  // Also hide when the assistant feature is disabled for this user.
+  const assistantEnabled = useFeature('assistant');
 
   // Let other surfaces (e.g. the command palette) open Majhi.
   useEffect(() => {
@@ -124,7 +128,7 @@ export function MajhiWidget() {
     }
   }
 
-  if (!status?.enabled) return null;
+  if (!status?.enabled || !assistantEnabled) return null;
 
   return (
     <>

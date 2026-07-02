@@ -54,11 +54,17 @@ export const PRIORITIES: Priority[] = [
 // Entities (API response shapes)
 // ---------------------------------------------------------------------------
 
+export type PlatformRole = 'SUPER_ADMIN' | 'MEMBER';
+
 export interface UserDto {
   id: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  // Present on the authenticated user (/auth/me) and admin listings; omitted
+  // on lightweight embedded user references.
+  platformRole?: PlatformRole;
+  banned?: boolean;
 }
 
 export interface AuthResponse {
@@ -1063,4 +1069,93 @@ export interface KnowledgeIngestDto {
   ingestError: string | null;
   chunkCount: number;
   ingestedAt: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Platform administration — super-admin role, feature flags, bans
+// ---------------------------------------------------------------------------
+
+export type FeatureScope = 'GLOBAL' | 'TEAM' | 'USER';
+
+/** Toggleable feature keys. Default state is enabled; overrides can disable. */
+export type FeatureKey =
+  | 'board'
+  | 'backlog'
+  | 'list'
+  | 'timeline'
+  | 'calendar'
+  | 'reports'
+  | 'releases'
+  | 'views'
+  | 'teams'
+  | 'knowledge'
+  | 'assistant'
+  | 'dashboard'
+  | 'timeTracking'
+  | 'customFields';
+
+export interface FeatureDef {
+  key: FeatureKey;
+  label: string;
+  description: string;
+}
+
+export const FEATURES: FeatureDef[] = [
+  { key: 'board', label: 'Board', description: 'Kanban board' },
+  { key: 'backlog', label: 'Backlog', description: 'Sprint backlog' },
+  { key: 'list', label: 'List view', description: 'Tabular issue list' },
+  { key: 'timeline', label: 'Timeline', description: 'Roadmap / Gantt' },
+  { key: 'calendar', label: 'Calendar', description: 'Calendar view' },
+  { key: 'reports', label: 'Reports', description: 'Charts & analytics' },
+  { key: 'releases', label: 'Releases', description: 'Versions & delivery' },
+  { key: 'views', label: 'Views', description: 'Saved cross-space views' },
+  { key: 'teams', label: 'Teams', description: 'Team management' },
+  { key: 'knowledge', label: 'Knowledge base', description: 'Docs & files' },
+  { key: 'assistant', label: 'Majhi assistant', description: 'AI assistant' },
+  { key: 'dashboard', label: 'Dashboard', description: 'Personal home' },
+  { key: 'timeTracking', label: 'Time tracking', description: 'Worklogs & estimates' },
+  { key: 'customFields', label: 'Custom fields', description: 'Custom issue fields' },
+];
+
+/** Effective feature map for the current user (GET /me/features). */
+export type FeatureMap = Record<FeatureKey, boolean>;
+
+export interface FeatureOverrideDto {
+  id: string;
+  feature: FeatureKey;
+  scope: FeatureScope;
+  teamId: string | null;
+  userId: string | null;
+  enabled: boolean;
+  team?: TeamSummaryDto | null;
+  user?: UserDto | null;
+}
+
+export interface SetFeatureOverrideDto {
+  feature: FeatureKey;
+  scope: FeatureScope;
+  teamId?: string | null;
+  userId?: string | null;
+  enabled: boolean;
+}
+
+/** A user row in the admin console. */
+export interface AdminUserDto {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  platformRole: PlatformRole;
+  banned: boolean;
+  banReason: string | null;
+  teams: TeamSummaryDto[];
+  createdAt: string;
+}
+
+export interface UpdatePlatformRoleDto {
+  platformRole: PlatformRole;
+}
+
+export interface BanUserDto {
+  reason?: string;
 }
