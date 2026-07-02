@@ -251,6 +251,7 @@ export function AppLayout() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         projectKey={key}
+        onCreateIssue={activeProject ? () => setCreateOpen(true) : undefined}
       />
       {activeProject && (
         <CreateIssueModal

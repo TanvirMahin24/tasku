@@ -50,6 +50,13 @@ export function MajhiWidget() {
     staleTime: 60_000,
   });
 
+  // Let other surfaces (e.g. the command palette) open Majhi.
+  useEffect(() => {
+    const openMajhi = () => setOpen(true);
+    window.addEventListener('majhi:open', openMajhi);
+    return () => window.removeEventListener('majhi:open', openMajhi);
+  }, []);
+
   const { data: sessions = [] } = useQuery({
     queryKey: qk.aiSessions,
     queryFn: aiApi.sessions,
