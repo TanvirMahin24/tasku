@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
+  BookOpen,
   Home,
   LayoutGrid,
   LogOut,
@@ -147,6 +148,9 @@ export function AppLayout() {
             </SidebarLink>
             <SidebarLink to="/views" icon={Table2} end>
               Views
+            </SidebarLink>
+            <SidebarLink to="/knowledge" icon={BookOpen}>
+              Knowledge base
             </SidebarLink>
             <SidebarLink to="/settings/assistant" icon={Sparkles}>
               Assistant

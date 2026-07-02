@@ -11,6 +11,9 @@ import type {
   CreateKnowledgeLinkDto,
   ImportableKnowledgeDocDto,
   KnowledgeDocDto,
+  KnowledgeListItemDto,
+  KnowledgeListQuery,
+  KnowledgeOwnerRef,
 } from '@tasku/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../common/membership.service';
@@ -76,6 +79,83 @@ export class KnowledgeService {
       orderBy: { createdAt: 'desc' },
     });
     return docs.map((d) => this.toDto(d, { origin: 'self' }, true));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Global KB — every doc the user can access (their teams + issues in their
+  // member projects), with search + filters. Powers the sidebar Knowledge page.
+  // ---------------------------------------------------------------------------
+  async listAll(
+    userId: string,
+    q: KnowledgeListQuery,
+  ): Promise<KnowledgeListItemDto[]> {
+    const [teamRows, projectRows] = await Promise.all([
+      this.prisma.teamMember.findMany({
+        where: { userId },
+        select: { teamId: true },
+      }),
+      this.prisma.projectMember.findMany({
+        where: { userId },
+        select: { projectId: true },
+      }),
+    ]);
+    const teamIds = teamRows.map((r) => r.teamId);
+    const projectIds = projectRows.map((r) => r.projectId);
+
+    const scopes: Prisma.KnowledgeDocWhereInput[] = [];
+    if (teamIds.length) scopes.push({ teamId: { in: teamIds } });
+    if (projectIds.length)
+      scopes.push({ issue: { projectId: { in: projectIds } } });
+    if (!scopes.length) return [];
+
+    const and: Prisma.KnowledgeDocWhereInput[] = [{ OR: scopes }];
+    if (q.q?.trim())
+      and.push({ title: { contains: q.q.trim(), mode: 'insensitive' } });
+    if (q.type) and.push({ type: q.type });
+    if (q.linkKind) and.push({ linkKind: q.linkKind as KnowledgeLinkKind });
+    if (q.teamId) and.push({ teamId: q.teamId });
+    if (q.ownerKind === 'team') and.push({ teamId: { not: null } });
+    if (q.ownerKind === 'issue') and.push({ issueId: { not: null } });
+    if (q.ingestStatus)
+      and.push({ ingestStatus: q.ingestStatus as never });
+
+    const docs = await this.prisma.knowledgeDoc.findMany({
+      where: { AND: and },
+      include: {
+        ...INCLUDE,
+        team: { select: { id: true, name: true, color: true } },
+        issue: { select: { projectId: true, key: true, title: true } },
+        _count: { select: { chunks: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 500,
+    });
+
+    return docs.map((d) => {
+      const base = this.toDto(
+        d as unknown as DocWithIncludes,
+        { origin: 'self' },
+        true,
+      );
+      const owner: KnowledgeOwnerRef = d.teamId
+        ? {
+            kind: 'team',
+            id: d.teamId,
+            label: d.team?.name ?? '?',
+            color: d.team?.color ?? null,
+          }
+        : {
+            kind: 'issue',
+            id: d.issue?.key ?? d.issueId ?? '?',
+            label: d.issue?.key ?? '?',
+          };
+      return {
+        ...base,
+        owner,
+        ingestStatus: d.ingestStatus ?? null,
+        chunkCount: d._count?.chunks ?? 0,
+      };
+    });
   }
 
   async createTeamLink(

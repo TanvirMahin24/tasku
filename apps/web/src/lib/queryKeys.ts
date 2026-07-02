@@ -5,6 +5,7 @@ import type { IssueFilters } from './api';
 export const qk = {
   me: ['me'] as const,
   users: ['users'] as const,
+  knowledgeAll: (q?: unknown) => ['knowledge', 'all', q ?? {}] as const,
 
   projects: ['projects'] as const,
   recommendedProjects: ['projects', 'recommended'] as const,

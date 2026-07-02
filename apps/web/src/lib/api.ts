@@ -24,6 +24,8 @@ import type {
   CreateVersionDto,
   CustomFieldDefDto,
   KnowledgeDocDto,
+  KnowledgeListItemDto,
+  KnowledgeListQuery,
   ImportableKnowledgeDocDto,
   MentionableDto,
   CustomFieldValue,
@@ -438,6 +440,11 @@ function knowledgeFileForm(file: File, title?: string): FormData {
 }
 
 export const knowledgeApi = {
+  /** Global list — every doc the user can access, with search + filters. */
+  listAll: (query?: KnowledgeListQuery) =>
+    api
+      .get<KnowledgeListItemDto[]>(`/knowledge`, { params: query })
+      .then((r) => r.data),
   listTeam: (teamId: string) =>
     api.get<KnowledgeDocDto[]>(`/teams/${teamId}/knowledge`).then((r) => r.data),
   listIssue: (issueKey: string) =>

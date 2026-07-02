@@ -19,6 +19,8 @@ import type {
   ImportKnowledgeDto,
   ImportableKnowledgeDocDto,
   KnowledgeDocDto,
+  KnowledgeListItemDto,
+  KnowledgeListQuery,
 } from '@tasku/types';
 import { KnowledgeService } from './knowledge.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,6 +30,15 @@ import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 @Controller()
 export class KnowledgeController {
   constructor(private readonly knowledge: KnowledgeService) {}
+
+  // --- Global KB (sidebar Knowledge page) ---
+  @Get('knowledge')
+  listAll(
+    @Query() query: KnowledgeListQuery,
+    @CurrentUser() user: AuthUser,
+  ): Promise<KnowledgeListItemDto[]> {
+    return this.knowledge.listAll(user.id, query);
+  }
 
   // --- Team KB ---
   @Get('teams/:id/knowledge')

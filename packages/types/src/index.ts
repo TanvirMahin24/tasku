@@ -802,6 +802,31 @@ export interface ImportableKnowledgeDocDto {
   ownerLabel: string; // team name / issue key
 }
 
+/** Who owns a knowledge doc — a team or an issue. */
+export interface KnowledgeOwnerRef {
+  kind: 'team' | 'issue';
+  id: string; // team id / issue key
+  label: string; // team name / issue key
+  color?: string | null; // team color (when kind === 'team')
+}
+
+/** A row in the global Knowledge Base page (all docs a user can access). */
+export interface KnowledgeListItemDto extends KnowledgeDocDto {
+  owner: KnowledgeOwnerRef;
+  ingestStatus: KnowledgeIngestStatus | null;
+  chunkCount: number;
+}
+
+/** Query params for the global Knowledge Base list. */
+export interface KnowledgeListQuery {
+  q?: string;
+  type?: KnowledgeType;
+  linkKind?: KnowledgeLinkKind;
+  ownerKind?: 'team' | 'issue';
+  teamId?: string;
+  ingestStatus?: KnowledgeIngestStatus;
+}
+
 // ---------------------------------------------------------------------------
 // Views — saved, filtered cross-space issue tables with configurable columns
 // ---------------------------------------------------------------------------
