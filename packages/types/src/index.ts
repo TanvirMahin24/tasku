@@ -161,6 +161,7 @@ export interface MentionableDto {
   id: string;
   label: string; // primary text (name / issue key / doc title / board name)
   sublabel?: string | null; // email / issue title / doc kind / etc.
+  issueType?: IssueType; // present when type === 'issue' — drives the picker icon
 }
 
 export interface ActivityDto {

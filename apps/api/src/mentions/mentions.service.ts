@@ -47,7 +47,7 @@ export class MentionsService {
           projectId: project.id,
           ...(term ? { OR: [{ key: like }, { title: like }] } : {}),
         },
-        select: { id: true, key: true, title: true },
+        select: { id: true, key: true, title: true, type: true },
         orderBy: { updatedAt: 'desc' },
         take: PER_TYPE,
       }),
@@ -81,7 +81,13 @@ export class MentionsService {
       });
     }
     for (const i of issues) {
-      out.push({ type: 'issue', id: i.id, label: i.key, sublabel: i.title });
+      out.push({
+        type: 'issue',
+        id: i.id,
+        label: i.key,
+        sublabel: i.title,
+        issueType: i.type,
+      });
     }
     for (const k of knowledge) {
       out.push({

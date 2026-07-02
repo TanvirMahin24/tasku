@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { Sparkles } from 'lucide-react';
 import type { ChatMessageDto } from '@tasku/types';
+import { Markdown } from './Markdown';
 import { ReferenceBlock, ToolTrace } from './references';
 
 /**
@@ -30,12 +31,14 @@ export function MajhiMessage({ message }: { message: ChatMessageDto }) {
       <div className="min-w-0 flex-1">
         <div
           className={clsx(
-            'whitespace-pre-wrap break-words rounded-2xl rounded-tl-sm border border-line bg-white px-3 py-2 text-[13px] text-ink',
-            'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+            'break-words rounded-2xl rounded-tl-sm border border-line bg-white px-3 py-2',
+            'dark:border-gray-700 dark:bg-gray-900',
           )}
         >
-          {message.content || (
-            <span className="italic text-ink-faint">No answer.</span>
+          {message.content ? (
+            <Markdown content={message.content} references={message.references} />
+          ) : (
+            <span className="text-[13px] italic text-ink-faint">No answer.</span>
           )}
         </div>
         <ReferenceBlock references={message.references} />

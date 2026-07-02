@@ -13,7 +13,7 @@ import { avatarColor } from '@/lib/format';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 import { Modal } from '@/components/ui/Modal';
 import { inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -167,7 +167,7 @@ function TaskRow({ issue }: { issue: IssueSummaryDto }) {
         <span className="min-w-0 flex-1 truncate text-ink-soft dark:text-gray-200">
           {issue.title}
         </span>
-        <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
+        <PriorityLabel priority={issue.priority} />
       </Link>
     </li>
   );

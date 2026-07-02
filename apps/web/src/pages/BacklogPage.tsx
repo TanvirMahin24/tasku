@@ -25,7 +25,7 @@ import { Modal } from '@/components/ui/Modal';
 import { inputClass } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { LabelBadge } from '@/components/ui/Badge';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 import { CreateIssueModal } from '@/components/CreateIssueModal';
 import { IssueDrawer } from '@/components/IssueDrawer';
 
@@ -380,7 +380,7 @@ function IssueRows({
                 </button>
 
                 <div className="flex shrink-0 items-center gap-2.5">
-                  <PriorityIcon priority={issue.priority} />
+                  <PriorityLabel priority={issue.priority} />
                   {issue.storyPoints != null && (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400">
                       {issue.storyPoints}

@@ -37,7 +37,7 @@ import { Chip } from '@/components/ui/Chip';
 import { Modal } from '@/components/ui/Modal';
 import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 import { PageHeader, EmptyState } from '@/components/ui/PageHeader';
 import { Spinner } from '@/components/ui/Spinner';
 
@@ -451,10 +451,7 @@ function ResultsTable({
                 )}
               </td>
               <td className="px-3 py-2.5 align-middle">
-                <span className="flex items-center gap-1 text-xs text-ink-muted dark:text-gray-400">
-                  <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
-                  {PRIORITY_META[issue.priority].label}
-                </span>
+                <PriorityLabel priority={issue.priority} />
               </td>
               <td className="px-3 py-2.5 text-right align-middle text-ink-muted dark:text-gray-400">
                 {issue.storyPoints ?? <span className="text-ink-faint">—</span>}

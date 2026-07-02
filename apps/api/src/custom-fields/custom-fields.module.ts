@@ -5,5 +5,6 @@ import { CustomFieldsController } from './custom-fields.controller';
 @Module({
   controllers: [CustomFieldsController],
   providers: [CustomFieldsService],
+  exports: [CustomFieldsService],
 })
 export class CustomFieldsModule {}

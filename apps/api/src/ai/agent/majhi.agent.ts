@@ -11,6 +11,7 @@ import type {
 } from '@tasku/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IssuesService } from '../../issues/issues.service';
+import { CustomFieldsService } from '../../custom-fields/custom-fields.service';
 import { ProviderFactory } from '../providers/provider.factory';
 import { RagService } from '../rag/rag.service';
 import { buildTools } from '../tools';
@@ -38,6 +39,7 @@ export class MajhiAgent {
   constructor(
     private readonly prisma: PrismaService,
     private readonly issues: IssuesService,
+    private readonly customFields: CustomFieldsService,
     private readonly providers: ProviderFactory,
     private readonly rag: RagService,
   ) {}
@@ -73,6 +75,7 @@ export class MajhiAgent {
       chatContext: input.chatContext,
       prisma: this.prisma,
       issues: this.issues,
+      customFields: this.customFields,
       rag: this.rag,
       addReference,
       addTrace,
@@ -126,18 +129,80 @@ export class MajhiAgent {
       text = await this.fallback(bundle.chat, input, contextBlock, history);
     }
 
+    // The tool-calling agent can occasionally return a non-text final step
+    // (e.g. a raw function-call part); never surface an empty bubble.
+    if (!text.trim()) {
+      this.logger.warn('agent produced empty output; using plain fallback');
+      text = await this.fallback(bundle.chat, input, contextBlock, history);
+    }
+
     return { text, references: [...refMap.values()], toolCalls };
   }
 
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
+  /** Who is asking + their project/team scope, so "me/my" resolves correctly. */
+  private async buildUserBlock(
+    userId: string,
+    memberProjectIds: string[],
+    memberTeamIds: string[],
+  ): Promise<string> {
+    const [user, projects, teams] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true, email: true, platformRole: true },
+      }),
+      this.prisma.project.findMany({
+        where: { id: { in: memberProjectIds } },
+        select: { key: true, name: true },
+      }),
+      this.prisma.team.findMany({
+        where: { id: { in: memberTeamIds } },
+        select: { name: true },
+      }),
+    ]);
+    if (!user) return '';
+
+    const lines = [
+      `You are assisting ${user.displayName} <${user.email}>` +
+        (user.platformRole && user.platformRole !== 'MEMBER'
+          ? ` (platform role: ${user.platformRole})`
+          : '') +
+        '.',
+      `When they say "me", "my", "mine" or "I", it means this user — match issues ` +
+        `by assignee email "${user.email}" or display name "${user.displayName}".`,
+      projects.length
+        ? `They can access ${projects.length} project(s): ` +
+          projects.map((p) => `${p.key} (${p.name})`).join(', ') +
+          '.'
+        : 'They are not a member of any project yet.',
+    ];
+    if (teams.length) {
+      lines.push(`Their teams: ${teams.map((t) => t.name).join(', ')}.`);
+    }
+    return lines.join('\n');
+  }
+
   private async buildContextBlock(
     input: AgentRunInput,
     scope: { memberProjectIds: string[]; memberTeamIds: string[] },
     addReference: (r: ChatReference) => void,
   ): Promise<string> {
     const lines: string[] = [];
+
+    lines.push(
+      `Today's date is ${new Date().toISOString().slice(0, 10)} (ISO). ` +
+        'Resolve relative or partial dates (e.g. "Jul 24", "next Friday") against it ' +
+        'and pass tools an ISO YYYY-MM-DD date.',
+    );
+
+    const userBlock = await this.buildUserBlock(
+      input.userId,
+      scope.memberProjectIds,
+      scope.memberTeamIds,
+    );
+    if (userBlock) lines.push(userBlock);
 
     const resolved = await resolveChatContext(
       this.prisma,
@@ -228,9 +293,13 @@ export class MajhiAgent {
         )
         .join('');
     }
-    if (output && typeof (output as any).content === 'string') {
-      return (output as any).content;
+    if (output && typeof output === 'object') {
+      const content = (output as any).content;
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) return this.asText(content);
     }
-    return String(output ?? '');
+    // Unhandled shape (e.g. a bare function-call part) → empty so the caller
+    // falls back to a plain-chat answer instead of "[object Object]".
+    return '';
   }
 }

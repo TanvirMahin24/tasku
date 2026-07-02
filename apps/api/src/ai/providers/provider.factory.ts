@@ -21,8 +21,9 @@ export interface ProviderBundle {
 
 /**
  * Instantiates the LangChain chat + embedding models for the active provider.
- * All models produce 768-dim embeddings (text-embedding-004 / nomic-embed-text)
- * to match the pgvector `vector(768)` columns.
+ * Embeddings are normalized to 768 dims in RagService.fit() to match the
+ * pgvector `vector(768)` columns (gemini-embedding-001 emits 3072, truncated;
+ * nomic-embed-text is already 768).
  *
  * Adding a provider = one branch in {@link create}.
  */

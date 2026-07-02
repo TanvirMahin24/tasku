@@ -26,8 +26,5 @@
       "@prisma/engines",
       "esbuild"
     ]
-  },
-  "dependencies": {
-    "typescript": "^5.4.5"
   }
 }

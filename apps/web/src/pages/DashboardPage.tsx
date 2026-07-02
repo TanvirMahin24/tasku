@@ -7,7 +7,7 @@ import { dashboardApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -160,7 +160,7 @@ function IssueList({
             <span className="min-w-0 flex-1 truncate text-ink-soft dark:text-gray-200">
               {i.title}
             </span>
-            <PriorityIcon priority={i.priority} className="h-3.5 w-3.5" />
+            <PriorityLabel priority={i.priority} />
             <Avatar user={i.assignee} size="xs" />
           </Link>
         </li>

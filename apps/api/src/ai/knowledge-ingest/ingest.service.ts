@@ -141,12 +141,9 @@ export class IngestService {
       return this.statusFor({ teamId });
     }
     if (issueId) {
-      const issue = await this.prisma.issue.findUnique({
-        where: { id: issueId },
-        select: { id: true, projectId: true },
-      });
-      if (!issue) throw new NotFoundException('Issue not found');
-      await this.membership.requireMembership(issue.projectId, userId);
+      // The web client passes the issue *key* (e.g. "TASK-1"), matching the
+      // other issue-knowledge endpoints; resolve key -> id and check access.
+      const issue = await this.membership.getIssueForMember(issueId, userId);
       return this.statusFor({ issueId: issue.id });
     }
     return [];

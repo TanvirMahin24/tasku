@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AtSign, Columns3, FileText, Hash } from 'lucide-react';
+import { AtSign, Columns3, FileText } from 'lucide-react';
 import type { MentionableDto } from '@tasku/types';
+import { IssueTypeIcon } from '@/components/ui/icons';
 import { mentionsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import { buildMentionToken, parseMentionSegments } from '@/lib/mentions';
@@ -110,7 +111,16 @@ export function MentionInput({
   }, [value]);
 
   useEffect(() => {
-    if (autoFocus) ref.current?.focus();
+    const el = ref.current;
+    if (!autoFocus || !el) return;
+    el.focus();
+    // Place the caret at the end so prefilled replies ("@Name ") type after it.
+    const sel = document.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
   }, [autoFocus]);
 
   const { data: items = [] } = useQuery({
@@ -239,7 +249,7 @@ export function MentionInput({
                     : 'hover:bg-surface-sunken dark:hover:bg-white/10'
                 }`}
               >
-                <MentionKindIcon type={it.type} />
+                <MentionKindIcon item={it} />
                 <span className="min-w-0 flex-1 truncate text-ink dark:text-gray-100">
                   {it.label}
                 </span>
@@ -257,10 +267,13 @@ export function MentionInput({
   );
 }
 
-function MentionKindIcon({ type }: { type: MentionableDto['type'] }) {
+// Picker icon per mentionable. Issues use their colored type icon (epic, task,
+// idea, subtask, bug, story); everything else gets a flat kind icon.
+export function MentionKindIcon({ item }: { item: MentionableDto }) {
   const cls = 'h-3.5 w-3.5 shrink-0 text-ink-faint';
-  if (type === 'user') return <AtSign className={cls} />;
-  if (type === 'issue') return <Hash className={cls} />;
-  if (type === 'board') return <Columns3 className={cls} />;
+  if (item.type === 'issue')
+    return <IssueTypeIcon type={item.issueType ?? 'TASK'} boxed />;
+  if (item.type === 'user') return <AtSign className={cls} />;
+  if (item.type === 'board') return <Columns3 className={cls} />;
   return <FileText className={cls} />;
 }

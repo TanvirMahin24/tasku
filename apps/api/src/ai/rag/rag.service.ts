@@ -29,6 +29,9 @@ export interface KnowledgeHit {
 export class RagService {
   private readonly logger = new Logger(RagService.name);
 
+  /** Dimension of the pgvector `vector(768)` columns. */
+  private static readonly DIM = 768;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly providers: ProviderFactory,
@@ -37,12 +40,25 @@ export class RagService {
   // ---------------------------------------------------------------------------
   // Embeddings
   // ---------------------------------------------------------------------------
+  /**
+   * Truncate a provider embedding to {@link DIM}. gemini-embedding-001 returns
+   * 3072-dim Matryoshka vectors whose first N dims are the N-dim representation;
+   * @langchain/google-genai@0.1 ignores `outputDimensionality`, so we slice.
+   * Cosine (`<=>`) is scale-invariant, so no renormalization is needed.
+   * ponytail: slice to schema dim; if a provider ever returns a non-prefix
+   * vector, upgrade @langchain/google-genai for native outputDimensionality.
+   */
+  private fit(vec: number[]): number[] {
+    return vec.length > RagService.DIM ? vec.slice(0, RagService.DIM) : vec;
+  }
+
   async embed(texts: string[]): Promise<number[][] | null> {
     if (!texts.length) return [];
     const bundle = await this.providers.create();
     if (!bundle) return null;
     try {
-      return await bundle.embeddings.embedDocuments(texts);
+      const raw = await bundle.embeddings.embedDocuments(texts);
+      return raw.map((v) => this.fit(v));
     } catch (err) {
       this.logger.warn(`embed failed: ${String(err)}`);
       return null;
@@ -53,7 +69,7 @@ export class RagService {
     const bundle = await this.providers.create();
     if (!bundle) return null;
     try {
-      return await bundle.embeddings.embedQuery(text);
+      return this.fit(await bundle.embeddings.embedQuery(text));
     } catch (err) {
       this.logger.warn(`embedQuery failed: ${String(err)}`);
       return null;
@@ -86,7 +102,7 @@ export class RagService {
     if (existing?.textHash === textHash) return true; // unchanged
 
     const vectors = await this.embed([text]);
-    if (!vectors || !vectors[0]) return false;
+    if (!vectors || vectors[0]?.length !== RagService.DIM) return false;
 
     // Upsert non-vector columns via the client, then set the vector via raw SQL.
     await this.prisma.issueEmbedding.upsert({
@@ -136,6 +152,13 @@ export class RagService {
     try {
       await this.prisma.knowledgeChunk.deleteMany({ where: { docId } });
       for (let i = 0; i < chunks.length; i++) {
+        // Guard the pgvector cast: an empty/short vector would otherwise fail as
+        // the opaque `vector must have at least 1 dimension` (SQLSTATE 22000).
+        if (vectors[i]?.length !== RagService.DIM) {
+          throw new Error(
+            `embedding provider returned a ${vectors[i]?.length ?? 0}-dim vector (expected ${RagService.DIM}); check GEMINI_EMBED_MODEL`,
+          );
+        }
         const row = await this.prisma.knowledgeChunk.create({
           data: { docId, ord: i, content: chunks[i] },
           select: { id: true },

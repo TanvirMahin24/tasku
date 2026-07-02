@@ -2,6 +2,7 @@ import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { ChatContext, ChatReference, ToolCallTrace } from '@tasku/types';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { IssuesService } from '../../issues/issues.service';
+import type { CustomFieldsService } from '../../custom-fields/custom-fields.service';
 import type { RagService } from '../rag/rag.service';
 
 /**
@@ -18,6 +19,7 @@ export interface ToolContext {
   chatContext?: ChatContext | null;
   prisma: PrismaService;
   issues: IssuesService;
+  customFields: CustomFieldsService;
   rag: RagService;
   /** Attach a citation to the answer (deduped by the agent). */
   addReference: (ref: ChatReference) => void;

@@ -13,6 +13,7 @@ import {
   type DefaultReactSuggestionItem,
 } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
+import { MentionKindIcon } from '@/components/mentions/MentionInput';
 import { mentionsApi } from '@/lib/api';
 import { useThemeStore } from '@/store/theme';
 
@@ -97,6 +98,7 @@ export function DescriptionEditor({
     return items.map((it) => ({
       title: it.label,
       subtext: it.sublabel ?? undefined,
+      icon: <MentionKindIcon item={it} />,
       onItemClick: () =>
         editor.insertInlineContent([
           { type: 'mention', props: { type: it.type, id: it.id, label: it.label } },

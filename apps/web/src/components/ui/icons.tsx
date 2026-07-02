@@ -88,3 +88,24 @@ export function PriorityIcon({
     </span>
   );
 }
+
+/** Canonical priority display: icon + label. Use everywhere priority is shown. */
+export function PriorityLabel({
+  priority,
+  className,
+}: {
+  priority: Priority;
+  className?: string;
+}) {
+  return (
+    <span
+      className={clsx(
+        'inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400',
+        className,
+      )}
+    >
+      <PriorityIcon priority={priority} className="h-3.5 w-3.5" />
+      {PRIORITY_META[priority].label}
+    </span>
+  );
+}

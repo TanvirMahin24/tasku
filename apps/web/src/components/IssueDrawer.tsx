@@ -72,6 +72,7 @@ import { IssueTypeIcon } from '@/components/ui/icons';
 import { KnowledgeBase } from '@/components/KnowledgeBase';
 import { MentionInput } from '@/components/mentions/MentionInput';
 import { MentionText } from '@/components/mentions/MentionText';
+import { buildMentionToken } from '@/lib/mentions';
 import { useAuthStore } from '@/store/auth';
 
 /** Smooth-scroll a labelled section into view within the drawer's main column. */
@@ -542,7 +543,21 @@ function CommentsPanel({
   comments: CommentDto[];
 }) {
   const queryClient = useQueryClient();
-  const [replyTo, setReplyTo] = useState<string | null>(null);
+  // Which thread's reply composer is open, plus any prefilled body (an
+  // @-mention of the author when replying to a reply — threads cap at 2 levels).
+  const [replyTo, setReplyTo] = useState<{
+    threadId: string;
+    initial: string;
+  } | null>(null);
+  const replyToAuthor = (threadId: string, author: CommentDto['author']) =>
+    setReplyTo({
+      threadId,
+      initial: `${buildMentionToken({
+        type: 'user',
+        id: author.id,
+        label: author.displayName,
+      })} `,
+    });
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: qk.issue(issueKey) });
@@ -584,10 +599,12 @@ function CommentsPanel({
                   projectKey={projectKey}
                   onDelete={() => remove.mutate(c.id)}
                   onReply={() =>
-                    setReplyTo((v) => (v === c.id ? null : c.id))
+                    setReplyTo((v) =>
+                      v?.threadId === c.id ? null : { threadId: c.id, initial: '' },
+                    )
                   }
                 />
-                {(replies.length > 0 || replyTo === c.id) && (
+                {(replies.length > 0 || replyTo?.threadId === c.id) && (
                   <div className="ml-9 space-y-2 border-l border-line-soft pl-3 dark:border-gray-700">
                     {replies.map((r) => (
                       <CommentItem
@@ -595,11 +612,16 @@ function CommentsPanel({
                         comment={r}
                         projectKey={projectKey}
                         onDelete={() => remove.mutate(r.id)}
+                        onReply={() => replyToAuthor(c.id, r.author)}
                       />
                     ))}
-                    {replyTo === c.id && (
+                    {replyTo?.threadId === c.id && (
                       <Composer
+                        // Remount when the prefill changes so a new reply target
+                        // resets the composer body.
+                        key={replyTo.initial}
                         projectKey={projectKey}
+                        initialValue={replyTo.initial}
                         placeholder="Reply…  (@ to mention)"
                         submitLabel="Reply"
                         autoFocus
@@ -681,6 +703,7 @@ function Composer({
   placeholder,
   submitLabel,
   autoFocus,
+  initialValue,
   onSubmit,
   onCancel,
 }: {
@@ -688,10 +711,11 @@ function Composer({
   placeholder?: string;
   submitLabel: string;
   autoFocus?: boolean;
+  initialValue?: string;
   onSubmit: (text: string) => Promise<unknown>;
   onCancel?: () => void;
 }) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initialValue ?? '');
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     const text = value.trim();

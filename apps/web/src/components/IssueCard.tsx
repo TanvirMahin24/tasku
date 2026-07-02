@@ -3,7 +3,7 @@ import type { IssueSummaryDto } from '@tasku/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { LabelBadge } from '@/components/ui/Badge';
 import { TeamChip } from '@/components/ui/TeamChip';
-import { IssueTypeIcon, PriorityIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 
 /**
  * Presentational Kanban card. Drag wiring is layered on by SortableIssueCard so
@@ -46,7 +46,7 @@ export function IssueCardContent({
           <span className="font-mono text-[11px] font-semibold text-ink-faint dark:text-gray-400">
             {issue.key}
           </span>
-          <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
+          <PriorityLabel priority={issue.priority} />
         </div>
         <div className="flex items-center gap-1.5">
           {issue.storyPoints != null && (

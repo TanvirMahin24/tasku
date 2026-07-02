@@ -29,10 +29,15 @@ export class AiConfig {
     return (process.env.GEMINI_API_KEY || '').trim();
   }
   get geminiModel(): string {
-    return process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    // gemini-flash-latest returns tool calls in the shape @langchain/google-genai
+    // 0.1 understands; pinned gemini-2.5-flash emits thoughtSignature parts that
+    // break the tool-calling agent loop (tools never execute).
+    return process.env.GEMINI_MODEL || 'gemini-flash-latest';
   }
   get geminiEmbedModel(): string {
-    return process.env.GEMINI_EMBED_MODEL || 'text-embedding-004';
+    // text-embedding-004 is retired on v1beta; gemini-embedding-001 is current.
+    // It emits 3072-dim vectors truncated to 768 in RagService.fit().
+    return process.env.GEMINI_EMBED_MODEL || 'gemini-embedding-001';
   }
 
   get ollamaBaseUrl(): string {

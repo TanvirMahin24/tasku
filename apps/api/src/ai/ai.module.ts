@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IssuesModule } from '../issues/issues.module';
 import { FeaturesModule } from '../features/features.module';
+import { CustomFieldsModule } from '../custom-fields/custom-fields.module';
 import { AiConfig } from './ai.config';
 import { ProviderFactory } from './providers/provider.factory';
 import { RagService } from './rag/rag.service';
@@ -20,7 +21,7 @@ import { IngestController } from './knowledge-ingest/ingest.controller';
  * add a provider = one branch in `AiConfig` + `ProviderFactory`.
  */
 @Module({
-  imports: [IssuesModule, FeaturesModule],
+  imports: [IssuesModule, FeaturesModule, CustomFieldsModule],
   controllers: [
     StatusController,
     ChatController,

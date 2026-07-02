@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/Button';
 import { LabelPicker } from '@/components/ui/LabelPicker';
 import { Select, inputClass } from '@/components/ui/Select';
 import { TeamChip } from '@/components/ui/TeamChip';
-import { IssueTypeIcon, PriorityIcon, StatusPill } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel, StatusPill } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/PageHeader';
 import { IssueDrawer } from '@/components/IssueDrawer';
@@ -133,37 +133,47 @@ export default function ListPage() {
             className={`${inputClass} h-9 w-52 pl-8`}
           />
         </div>
-        <Select
-          value={statusId}
-          onChange={(e) => setStatusId(e.target.value)}
-          placeholder="All statuses"
-          className="h-9 w-auto"
-          options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-        />
-        <Select
-          value={assigneeId}
-          onChange={(e) => setAssigneeId(e.target.value)}
-          placeholder="All assignees"
-          className="h-9 w-auto"
-          options={users.map((u) => ({ value: u.id, label: u.displayName }))}
-        />
-        <Select
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          placeholder="All teams"
-          className="h-9 w-auto"
-          options={teams.map((t) => ({ value: t.id, label: t.name }))}
-        />
-        <Select
-          value={type}
-          onChange={(e) => setType(e.target.value as IssueType | '')}
-          placeholder="All types"
-          className="h-9 w-auto"
-          options={ISSUE_TYPES.map((t) => ({
-            value: t,
-            label: ISSUE_TYPE_META[t].label,
-          }))}
-        />
+        {/* Wrapper divs shrink to content; Select's base `w-full` fills them,
+            so each sizes to its widest option instead of the whole row. */}
+        <div>
+          <Select
+            value={statusId}
+            onChange={(e) => setStatusId(e.target.value)}
+            placeholder="All statuses"
+            className="h-9"
+            options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+          />
+        </div>
+        <div>
+          <Select
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            placeholder="All assignees"
+            className="h-9"
+            options={users.map((u) => ({ value: u.id, label: u.displayName }))}
+          />
+        </div>
+        <div>
+          <Select
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="All teams"
+            className="h-9"
+            options={teams.map((t) => ({ value: t.id, label: t.name }))}
+          />
+        </div>
+        <div>
+          <Select
+            value={type}
+            onChange={(e) => setType(e.target.value as IssueType | '')}
+            placeholder="All types"
+            className="h-9"
+            options={ISSUE_TYPES.map((t) => ({
+              value: t,
+              label: ISSUE_TYPE_META[t].label,
+            }))}
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto scrollbar-thin bg-surface-page dark:bg-gray-950 p-6">
@@ -477,10 +487,7 @@ function IssueRow({
         )}
       </Td>
       <Td>
-        <span className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-          <PriorityIcon priority={issue.priority} className="h-3.5 w-3.5" />
-          {PRIORITY_META[issue.priority].label}
-        </span>
+        <PriorityLabel priority={issue.priority} />
       </Td>
       <Td className="text-right text-gray-600 dark:text-gray-400">
         {issue.storyPoints ?? <span className="text-gray-300">—</span>}

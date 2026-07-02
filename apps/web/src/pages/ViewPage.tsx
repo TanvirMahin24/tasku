@@ -19,7 +19,6 @@ import { viewsApi } from '@/lib/api';
 import { qk } from '@/lib/queryKeys';
 import {
   ISSUE_TYPE_META,
-  PRIORITY_META,
   STATUS_CATEGORY_META,
   formatDate,
   relativeTime,
@@ -28,7 +27,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Badge, LabelBadge } from '@/components/ui/Badge';
 import { TeamChip } from '@/components/ui/TeamChip';
-import { IssueTypeIcon } from '@/components/ui/icons';
+import { IssueTypeIcon, PriorityLabel } from '@/components/ui/icons';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { IssueDrawer } from '@/components/IssueDrawer';
 import { ViewEditor } from '@/components/ViewEditor';
@@ -381,14 +380,7 @@ function Cell({
         dash
       );
     case 'priority':
-      return (
-        <span
-          className="text-[12px] font-medium"
-          style={{ color: PRIORITY_META[row.priority].color }}
-        >
-          {PRIORITY_META[row.priority].label}
-        </span>
-      );
+      return <PriorityLabel priority={row.priority} />;
     case 'assignee':
       return row.assignee ? (
         <span className="flex items-center gap-1.5 text-ink-soft dark:text-gray-200">
