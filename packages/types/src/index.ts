@@ -72,6 +72,11 @@ export interface AuthResponse {
   user: UserDto;
 }
 
+/** Which third-party sign-in providers the server has configured. */
+export interface AuthProvidersDto {
+  google: boolean;
+}
+
 export interface ProjectDto {
   id: string;
   key: string;

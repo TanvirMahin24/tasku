@@ -12,6 +12,8 @@ interface AuthState {
   initialized: boolean;
   login: (dto: LoginDto) => Promise<void>;
   register: (dto: RegisterDto) => Promise<void>;
+  /** Adopt a token minted out-of-band (e.g. the Google OAuth redirect). */
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   setUser: (user: UserDto) => void;
   hydrate: () => Promise<void>;
@@ -49,6 +51,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await authApi.register(dto);
     writeToken(res.accessToken);
     set({ token: res.accessToken, user: res.user, initialized: true });
+  },
+
+  loginWithToken: async (token) => {
+    writeToken(token);
+    set({ token });
+    const user = await authApi.me();
+    set({ user, initialized: true });
   },
 
   logout: () => {

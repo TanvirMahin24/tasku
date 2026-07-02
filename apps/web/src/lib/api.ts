@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 import type {
   AddTeamMemberDto,
   AttachmentDto,
+  AuthProvidersDto,
   AuthResponse,
   BoardDto,
   BoardSummaryDto,
@@ -72,7 +73,7 @@ import type {
   UpdateViewDto,
 } from '@tasku/types';
 
-const API_URL =
+export const API_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
 
 export const api: AxiosInstance = axios.create({
@@ -139,6 +140,10 @@ export const authApi = {
   login: (dto: LoginDto) =>
     api.post<AuthResponse>('/auth/login', dto).then((r) => r.data),
   me: () => api.get<UserDto>('/auth/me').then((r) => r.data),
+  providers: () =>
+    api.get<AuthProvidersDto>('/auth/providers').then((r) => r.data),
+  /** Absolute URL to start the Google sign-in redirect flow. */
+  googleAuthUrl: () => `${API_URL}/auth/google`,
 };
 
 // ---------------------------------------------------------------------------
