@@ -156,7 +156,7 @@ export default function KnowledgeBasePage() {
             }
             className={selectCls}
           >
-            <option value="">Any RAG status</option>
+            <option value="">AI Processed</option>
             <option value="READY">Ready</option>
             <option value="PENDING">Pending</option>
             <option value="ERROR">Error</option>
